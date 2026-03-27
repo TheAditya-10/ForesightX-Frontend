@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ForesightX | Digital Oracle Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#323538",
+                        "inverse-primary": "#00677f",
+                        "on-tertiary-fixed": "#002112",
+                        "on-secondary-fixed-variant": "#5700c9",
+                        "background": "#111417",
+                        "tertiary-container": "#00db92",
+                        "surface": "#111417",
+                        "secondary-container": "#7000ff",
+                        "on-surface": "#e1e2e7",
+                        "on-primary": "#003543",
+                        "outline-variant": "#3c494e",
+                        "on-error": "#690005",
+                        "primary": "#a4e6ff",
+                        "on-secondary": "#3c0090",
+                        "on-primary-fixed-variant": "#004e60",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "on-background": "#e1e2e7",
+                        "primary-container": "#00d1ff",
+                        "on-tertiary-fixed-variant": "#005234",
+                        "secondary": "#d1bcff",
+                        "secondary-fixed": "#e9ddff",
+                        "secondary-fixed-dim": "#d1bcff",
+                        "primary-fixed": "#b7eaff",
+                        "inverse-surface": "#e1e2e7",
+                        "surface-container-lowest": "#0b0e11",
+                        "surface-tint": "#4cd6ff",
+                        "error-container": "#93000a",
+                        "outline": "#859399",
+                        "surface-container-highest": "#323538",
+                        "surface-container-low": "#191c1f",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#00e296",
+                        "surface-dim": "#111417",
+                        "on-primary-container": "#00566a",
+                        "tertiary": "#26faa9",
+                        "on-tertiary-container": "#005a39",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1d2023",
+                        "surface-bright": "#37393d",
+                        "on-secondary-fixed": "#23005b",
+                        "inverse-on-surface": "#2e3134",
+                        "on-primary-fixed": "#001f28",
+                        "tertiary-fixed": "#4dffb2",
+                        "on-secondary-container": "#ddcdff",
+                        "on-tertiary": "#003822",
+                        "surface-container-high": "#272a2e",
+                        "on-surface-variant": "#bbc9cf"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(29, 32, 35, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .text-glow-primary {
+            text-shadow: 0 0 15px rgba(164, 230, 255, 0.4);
+        }
+        .bg-glow-purple {
+            box-shadow: 0 0 30px rgba(112, 0, 255, 0.15);
+        }
+        .circular-meter {
+            background: conic-gradient(from 0deg, #a4e6ff 0%, #a4e6ff 85%, transparent 85%, transparent 100%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary/30">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 flex flex-col bg-[#111417] dark:bg-[#111417] shadow-[0_0_40px_rgba(164,230,255,0.06)] z-50">
+<div class="flex flex-col h-full py-8">
+<!-- Brand Anchor -->
+<div class="px-8 mb-12">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-background font-bold" style="font-variation-settings: 'FILL' 1;">insights</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xl font-bold tracking-tighter text-[#a4e6ff] font-headline">ForesightX</span>
+<span class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-medium">Digital Oracle v1.0</span>
+</div>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#a4e6ff] bg-[#7000ff]/10 rounded-r-lg border-l-4 border-[#a4e6ff] font-['Space_Grotesk'] tracking-wide text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                    Dashboard
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#E1E2E7]/60 hover:text-[#E1E2E7] transition-colors font-['Space_Grotesk'] tracking-wide text-sm hover:bg-[#1D2023]" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+                    Portfolio
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#E1E2E7]/60 hover:text-[#E1E2E7] transition-colors font-['Space_Grotesk'] tracking-wide text-sm hover:bg-[#1D2023]" href="#">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+                    Alerts
+                </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#E1E2E7]/60 hover:text-[#E1E2E7] transition-colors font-['Space_Grotesk'] tracking-wide text-sm hover:bg-[#1D2023]" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                    Settings
+                </a>
+</nav>
+<!-- CTA & User Profile -->
+<div class="px-6 mt-auto">
+<button class="w-full py-3 px-4 bg-secondary-container text-white rounded-xl font-headline font-bold text-sm tracking-wide bg-glow-purple active:scale-95 transition-transform">
+                    Upgrade to Pro
+                </button>
+<div class="mt-8 flex items-center gap-3 pt-6 border-t border-outline-variant/20">
+<img alt="User Profile" class="w-10 h-10 rounded-full border border-primary/20" data-alt="Professional headshot of a person with a neutral expression against a dark studio background, minimalist cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRU1vPoFxBzQvSVegxLtGypSk-1tjAhnFPzYHdF8_Tv1kDe0gs0W9m_3emKE2lAmp0jZo3d9lmE3wpYDtUCYfkrqoHhS0-E6wgOcpcNiylB1fP4_9V5CzqzZPHk7ebKhN6nqeGH3Fi98GyiweeeFtkZGU1bCBXPkU6mro2p7veVociRvGqKFsyozGTjugePn3rOjGbs5JKKpqTzH_w47XOEetAWGO0HcengGb0iaR9ageceAXY81kHKCwAM8_7ITE07b35vhK2iWQ"/>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">Alex Volkov</span>
+<span class="text-[10px] text-on-surface-variant">Tier: Institutional</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 z-40 bg-[#111417]/80 backdrop-blur-xl border-b border-[#E1E2E7]/15 flex justify-between items-center px-8 font-['Inter'] font-medium">
+<div class="flex items-center w-1/2">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="w-full bg-surface-container-high border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-1 focus:ring-[#a4e6ff]/30 text-on-surface placeholder:text-on-surface-variant/50" placeholder="Search markets, assets, or symbols..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-[#a4e6ff] hover:bg-[#E1E2E7]/5 rounded-full p-2 transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:text-[#a4e6ff] hover:bg-[#E1E2E7]/5 rounded-full p-2 transition-all">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+<div class="h-6 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-headline font-bold text-primary tracking-widest uppercase">Market Open</span>
+<div class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-8 pb-12">
+<!-- Hero Section: Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Price Chart Main Container -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/10 shadow-2xl">
+<div class="flex justify-between items-end mb-8">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h1 class="text-3xl font-headline font-bold tracking-tight text-on-surface">APPLE INC.</h1>
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-bold text-primary tracking-widest">AAPL.NAS</span>
+</div>
+<div class="flex items-baseline gap-4">
+<span class="text-4xl font-headline font-light text-on-surface">$189.42</span>
+<span class="text-tertiary font-bold flex items-center text-sm">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+                                    +2.45%
+                                </span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">1H</button>
+<button class="px-3 py-1.5 rounded-lg bg-primary/10 text-xs font-bold text-primary border border-primary/20">1D</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">1W</button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">1M</button>
+</div>
+</div>
+<!-- Main Chart Visualization Area -->
+<div class="h-[400px] w-full relative group">
+<!-- Chart Lines (Stylized SVG Representation) -->
+<svg class="w-full h-full overflow-visible" viewbox="0 0 1000 400">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="rgba(164, 230, 255, 0.2)"></stop>
+<stop offset="100%" stop-color="rgba(164, 230, 255, 0)"></stop>
+</lineargradient>
+</defs>
+<path d="M0,350 Q100,320 200,330 T400,280 T600,200 T800,220 T1000,100 L1000,400 L0,400 Z" fill="url(#chartGradient)"></path>
+<path class="drop-shadow-[0_0_8px_rgba(164,230,255,0.5)]" d="M0,350 Q100,320 200,330 T400,280 T600,200 T800,220 T1000,100" fill="none" stroke="#a4e6ff" stroke-linecap="round" stroke-width="3"></path>
+<!-- Vertical Indicator Line -->
+<line stroke="rgba(164,230,255,0.2)" stroke-dasharray="4" x1="800" x2="800" y1="0" y2="400"></line>
+<circle class="animate-pulse" cx="800" cy="220" fill="#a4e6ff" r="6"></circle>
+</svg>
+<!-- Hover Data Card -->
+<div class="absolute top-10 left-[82%] glass-panel border border-primary/20 p-3 rounded-xl shadow-xl z-10 hidden group-hover:block">
+<div class="text-[10px] text-on-surface-variant mb-1">MAY 24, 14:30</div>
+<div class="text-sm font-bold text-on-surface">$182.11</div>
+</div>
+</div>
+<!-- Indicator Panel -->
+<div class="mt-8 grid grid-cols-3 gap-8 pt-8 border-t border-outline-variant/10">
+<div>
+<div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-2 font-bold">RSI (14)</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[64%]"></div>
+</div>
+<div class="flex justify-between mt-1">
+<span class="text-[10px] font-bold text-on-surface">64.2</span>
+<span class="text-[10px] text-on-surface-variant">Neutral Bullish</span>
+</div>
+</div>
+<div>
+<div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-2 font-bold">MACD (12, 26, 9)</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container w-[78%]"></div>
+</div>
+<div class="flex justify-between mt-1">
+<span class="text-[10px] font-bold text-on-surface">1.82</span>
+<span class="text-[10px] text-on-surface-variant">Momentum Up</span>
+</div>
+</div>
+<div>
+<div class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-2 font-bold">Volume (24h)</div>
+<div class="h-1 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[45%]"></div>
+</div>
+<div class="flex justify-between mt-1">
+<span class="text-[10px] font-bold text-on-surface">54.2M</span>
+<span class="text-[10px] text-on-surface-variant">Consolidating</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar Widgets -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Prominent AI Insight Card -->
+<div class="relative overflow-hidden p-8 rounded-3xl bg-gradient-to-br from-secondary-container/20 to-surface-container border border-secondary-container/30 bg-glow-purple">
+<div class="relative z-10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-secondary" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="text-xs font-headline font-bold tracking-[0.2em] text-secondary uppercase">Oracle Intelligence</span>
+</div>
+<div class="flex items-center justify-between mb-8">
+<div class="space-y-1">
+<span class="text-4xl font-headline font-black text-white tracking-tighter">BUY</span>
+<p class="text-sm text-on-surface-variant leading-tight">Strong Buy recommendation from active trend-followers.</p>
+</div>
+<!-- Circular Visual Meter -->
+<div class="relative w-24 h-24">
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="48" cy="48" fill="none" r="40" stroke="rgba(255,255,255,0.05)" stroke-width="8"></circle>
+<circle class="text-primary" cx="48" cy="48" fill="none" r="40" stroke="currentColor" stroke-dasharray="251.2" stroke-dashoffset="37.68" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-xl font-bold text-white">85%</span>
+<span class="text-[8px] uppercase font-bold text-primary">Conf.</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low/50 backdrop-blur-md p-4 rounded-2xl border border-white/5">
+<p class="text-xs text-on-surface leading-relaxed italic">
+                                "Market sentiment is highly bullish following positive earnings report and breakthrough in production. Oracle detects low resistance at $195 level."
+                            </p>
+</div>
+</div>
+<!-- Decorative blur -->
+<div class="absolute -right-10 -bottom-10 w-40 h-40 bg-secondary-container/40 rounded-full blur-[60px]"></div>
+</div>
+<!-- Market Overview -->
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/10">
+<h3 class="text-sm font-headline font-bold text-on-surface mb-6 uppercase tracking-widest">Market Overview</h3>
+<!-- Sentiment Gauge -->
+<div class="mb-8">
+<div class="flex justify-between mb-2">
+<span class="text-[10px] font-bold text-error">Fear</span>
+<span class="text-[10px] font-bold text-tertiary">Greed</span>
+</div>
+<div class="h-2 w-full rounded-full bg-gradient-to-r from-error via-surface-variant to-tertiary relative">
+<div class="absolute h-4 w-1 bg-white -top-1 left-[72%] shadow-[0_0_10px_white] rounded-full"></div>
+</div>
+<div class="text-center mt-3">
+<span class="text-xs font-bold text-on-surface">Sentiment Index: 72</span>
+</div>
+</div>
+<!-- Tickers -->
+<div class="space-y-4">
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-[10px] font-bold">TSLA</div>
+<div>
+<div class="text-xs font-bold">Tesla Inc.</div>
+<div class="text-[10px] text-on-surface-variant">Automotive</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-bold">$175.40</div>
+<div class="text-[10px] text-error font-bold">-1.20%</div>
+</div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-[10px] font-bold">NVDA</div>
+<div>
+<div class="text-xs font-bold">NVIDIA Corp.</div>
+<div class="text-[10px] text-on-surface-variant">Technology</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-bold">$843.12</div>
+<div class="text-[10px] text-tertiary font-bold">+5.11%</div>
+</div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-[10px] font-bold">MSFT</div>
+<div>
+<div class="text-xs font-bold">Microsoft</div>
+<div class="text-[10px] text-on-surface-variant">Technology</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-xs font-bold">$402.50</div>
+<div class="text-[10px] text-tertiary font-bold">+0.85%</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity / Alerts -->
+<div class="glass-panel p-6 rounded-2xl border border-outline-variant/10">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Active Alerts</h3>
+<span class="text-[10px] text-primary cursor-pointer hover:underline">View All</span>
+</div>
+<div class="space-y-4">
+<div class="flex gap-4 p-3 rounded-xl bg-surface-container-low border border-white/5">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="rocket_launch">rocket_launch</span>
+<div class="text-[10px] leading-relaxed">
+<span class="font-bold">Price Alert:</span> AAPL crossed $188 resistance level. Momentum score 8.5/10.
+                            </div>
+</div>
+<div class="flex gap-4 p-3 rounded-xl bg-surface-container-low border border-white/5">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="psychology">psychology</span>
+<div class="text-[10px] leading-relaxed">
+<span class="font-bold">Oracle Note:</span> Whale activity detected in BTC options for next Friday expiration.
+                            </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer / Global Stats -->
+<div class="mt-12 grid grid-cols-4 gap-6">
+<div class="glass-panel p-4 rounded-xl flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+</div>
+<div>
+<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Global Vol.</div>
+<div class="text-sm font-bold">$2.4T</div>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-xl flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary" data-icon="bolt">bolt</span>
+</div>
+<div>
+<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Market Cap</div>
+<div class="text-sm font-bold">$112T</div>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-xl flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="query_stats">query_stats</span>
+</div>
+<div>
+<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Oracle Acc.</div>
+<div class="text-sm font-bold">94.2%</div>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-xl flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-error" data-icon="waves">waves</span>
+</div>
+<div>
+<div class="text-[10px] text-on-surface-variant uppercase tracking-tighter">VIX Index</div>
+<div class="text-sm font-bold">14.22</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button for AI Query -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="flex items-center gap-2 bg-gradient-to-r from-primary to-secondary-container text-background px-6 py-4 rounded-full font-headline font-black text-sm tracking-tighter shadow-2xl active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+            ASK ORACLE
+        </button>
+</div>
+</body></html>

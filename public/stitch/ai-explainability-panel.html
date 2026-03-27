@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ForesightX | AI Explainability Panel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-variant": "#323538",
+            "inverse-primary": "#00677f",
+            "on-tertiary-fixed": "#002112",
+            "on-secondary-fixed-variant": "#5700c9",
+            "background": "#111417",
+            "tertiary-container": "#00db92",
+            "surface": "#111417",
+            "secondary-container": "#7000ff",
+            "on-surface": "#e1e2e7",
+            "on-primary": "#003543",
+            "outline-variant": "#3c494e",
+            "on-error": "#690005",
+            "primary": "#a4e6ff",
+            "on-secondary": "#3c0090",
+            "on-primary-fixed-variant": "#004e60",
+            "primary-fixed-dim": "#4cd6ff",
+            "on-background": "#e1e2e7",
+            "primary-container": "#00d1ff",
+            "on-tertiary-fixed-variant": "#005234",
+            "secondary": "#d1bcff",
+            "secondary-fixed": "#e9ddff",
+            "secondary-fixed-dim": "#d1bcff",
+            "primary-fixed": "#b7eaff",
+            "inverse-surface": "#e1e2e7",
+            "surface-container-lowest": "#0b0e11",
+            "surface-tint": "#4cd6ff",
+            "error-container": "#93000a",
+            "outline": "#859399",
+            "surface-container-highest": "#323538",
+            "surface-container-low": "#191c1f",
+            "on-error-container": "#ffdad6",
+            "tertiary-fixed-dim": "#00e296",
+            "surface-dim": "#111417",
+            "on-primary-container": "#00566a",
+            "tertiary": "#26faa9",
+            "on-tertiary-container": "#005a39",
+            "error": "#ffb4ab",
+            "surface-container": "#1d2023",
+            "surface-bright": "#37393d",
+            "on-secondary-fixed": "#23005b",
+            "inverse-on-surface": "#2e3134",
+            "on-primary-fixed": "#001f28",
+            "tertiary-fixed": "#4dffb2",
+            "on-secondary-container": "#ddcdff",
+            "on-tertiary": "#003822",
+            "surface-container-high": "#272a2e",
+            "on-surface-variant": "#bbc9cf"
+          },
+          fontFamily: {
+            "headline": ["Space Grotesk"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .glass-panel {
+      background: rgba(29, 32, 35, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .glow-primary {
+      box-shadow: 0 0 20px rgba(164, 230, 255, 0.15);
+    }
+    .glow-secondary {
+      box-shadow: 0 0 25px rgba(112, 0, 255, 0.2);
+    }
+    body {
+      background-color: #111417;
+      color: #e1e2e7;
+    }
+  </style>
+</head>
+<body class="font-body selection:bg-primary/30 selection:text-primary">
+<!-- SideNavBar Anchor -->
+<aside class="h-screen w-64 fixed left-0 top-0 flex flex-col bg-[#111417] dark:bg-[#111417] shadow-[0_0_40px_rgba(164,230,255,0.06)] z-50">
+<div class="flex flex-col h-full py-8 font-['Space_Grotesk'] tracking-wide text-sm">
+<div class="px-8 mb-12">
+<h1 class="text-xl font-bold tracking-tighter text-[#a4e6ff]">ForesightX</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] text-[#E1E2E7]/40 mt-1">Digital Oracle v1.0</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Dashboard: Inactive -->
+<a class="flex items-center gap-3 px-8 py-3 text-[#E1E2E7]/60 hover:text-[#E1E2E7] hover:bg-[#1D2023] transition-all duration-300 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+          Dashboard
+        </a>
+<!-- Portfolio: Active (Mapping 'Glass Box AI' to Portfolio context) -->
+<a class="flex items-center gap-3 px-8 py-3 text-[#a4e6ff] bg-[#7000ff]/10 rounded-r-lg border-l-4 border-[#a4e6ff] active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+          Portfolio
+        </a>
+<!-- Alerts: Inactive -->
+<a class="flex items-center gap-3 px-8 py-3 text-[#E1E2E7]/60 hover:text-[#E1E2E7] hover:bg-[#1D2023] transition-all duration-300 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="notifications_active">notifications_active</span>
+          Alerts
+        </a>
+<!-- Settings: Inactive -->
+<a class="flex items-center gap-3 px-8 py-3 text-[#E1E2E7]/60 hover:text-[#E1E2E7] hover:bg-[#1D2023] transition-all duration-300 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+          Settings
+        </a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full py-4 bg-secondary-container text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+          Upgrade to Pro
+        </button>
+</div>
+</div>
+</aside>
+<!-- TopNavBar Anchor -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 z-40 bg-[#111417]/80 backdrop-blur-xl border-b border-[#E1E2E7]/15 flex justify-between items-center px-8">
+<div class="flex items-center gap-6 w-1/2">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="w-full bg-surface-container-high/50 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-on-surface-variant/50" placeholder="Search markets or AI insights..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:text-[#a4e6ff] hover:bg-[#E1E2E7]/5 rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant/30">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-on-surface">Alpha Voyager</p>
+<p class="text-[10px] text-primary">Pro Tier</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-primary/20">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Close-up portrait of a tech-savvy professional man with glasses in cool-toned neon lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCHWkdxmYR5_O3beEyxuNZURjBzWbuq4hSniRsNE_m2Ew4DfRIlM9pwAvNuEktoKQ0nZ2-h57FyWuvnp4HeT4ACs3cShrU0SX6_GIBvMobNgQNIJX-6ZjnYFQK7cR-29V-k_1U0k8rsEThIbgN9cs2dmi6E9baafP_QPiTe9q_CiT3dB80ojh8zQMYUdEXgBCmZdbKRhNUKG2l5a3-KyQypilpW3xH6OY30NEhR0-DmZEw0fnSChy-bA2Na1qsWNhNQBWt5Tz4MRr0"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 pb-12 px-8 min-h-screen">
+<!-- Hero Section: Glass Box Status -->
+<section class="mb-10">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="px-2 py-0.5 rounded bg-secondary-container/20 text-secondary text-[10px] font-bold uppercase tracking-widest">System Protocol</span>
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="text-xs text-tertiary font-medium">Neural Logic Active</span>
+</div>
+<h2 class="text-4xl font-headline font-bold text-on-surface tracking-tight">AI Explainability Panel</h2>
+<p class="text-on-surface-variant max-w-xl mt-2">Peering into the "Glass Box" – decoding the recursive logic and data synthesis behind the <span class="text-primary">BTC/USD Long Execution</span> at 04:22 UTC.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 rounded-lg border border-outline-variant/20 bg-surface-container-low hover:bg-surface-container transition-colors text-sm font-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="download">download</span> Report
+          </button>
+<button class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-bold text-sm flex items-center gap-2 glow-primary transition-transform active:scale-95">
+<span class="material-symbols-outlined text-sm" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span> Retrain Model
+          </button>
+</div>
+</div>
+</section>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Section: Why this decision? (Expandable Reasoning) -->
+<div class="col-span-12 lg:col-span-7 flex flex-col gap-6">
+<div class="glass-panel rounded-xl p-8 border border-white/5 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-secondary-container"></div>
+<h3 class="font-headline text-xl font-bold mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="psychology">psychology</span> Why this decision?
+          </h3>
+<div class="space-y-4">
+<!-- Reasoning Block 1 -->
+<div class="group bg-surface-container-low rounded-lg p-5 border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex justify-between items-center mb-2">
+<span class="text-xs font-bold text-primary-fixed uppercase tracking-tighter">01. Dynamic Support Synthesis</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="expand_more">expand_more</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Price action converged with the 200-day EMA and a high-volume node. The AI identified a "Spring" maneuver in the Wyckoff cycle, indicating high-probability accumulation.</p>
+</div>
+<!-- Reasoning Block 2 -->
+<div class="group bg-surface-container-low rounded-lg p-5 border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex justify-between items-center mb-2">
+<span class="text-xs font-bold text-primary-fixed uppercase tracking-tighter">02. Sentiment Divergence Check</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="expand_more">expand_more</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">While news headlines were bearish, social volume and "Fear &amp; Greed" index hit extreme lows. Cross-referencing 4.2M data points suggested a contrarian opportunity.</p>
+</div>
+<!-- Reasoning Block 3 -->
+<div class="group bg-surface-container-low rounded-lg p-5 border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex justify-between items-center mb-2">
+<span class="text-xs font-bold text-primary-fixed uppercase tracking-tighter">03. Liquidty Grab Detection</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="expand_more">expand_more</span>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed">Aggressive short liquidations were detected just below the $42k level. The AI predicted an immediate mean reversion as market makers refilled orders.</p>
+</div>
+</div>
+</div>
+<!-- Section: Tool Execution Flow (Timeline) -->
+<div class="glass-panel rounded-xl p-8 border border-white/5 relative overflow-hidden">
+<h3 class="font-headline text-xl font-bold mb-8 flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="account_tree">account_tree</span> Tool Execution Flow
+          </h3>
+<div class="relative flex flex-col gap-10">
+<!-- Timeline Line -->
+<div class="absolute left-[19px] top-2 bottom-2 w-[2px] bg-gradient-to-b from-primary/40 via-secondary-container/40 to-transparent"></div>
+<!-- Step 1 -->
+<div class="relative flex items-start gap-6 pl-10">
+<div class="absolute left-0 w-10 h-10 rounded-full bg-surface-container-high border-2 border-primary flex items-center justify-center glow-primary z-10">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="database">database</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Data Ingestion &amp; Cleaning</h4>
+<p class="text-xs text-on-surface-variant mt-1">Aggregated feeds from 12 exchanges and 4 news oracles. Redundancy check 100%.</p>
+<div class="flex gap-2 mt-2">
+<span class="text-[9px] px-2 py-0.5 rounded bg-surface-container-highest text-primary/70 border border-primary/20">4.2ms</span>
+</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="relative flex items-start gap-6 pl-10">
+<div class="absolute left-0 w-10 h-10 rounded-full bg-surface-container-high border-2 border-secondary-container flex items-center justify-center glow-secondary z-10">
+<span class="material-symbols-outlined text-secondary-container text-lg" data-icon="neurology">neurology</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Recursive Pattern Matching</h4>
+<p class="text-xs text-on-surface-variant mt-1">Comparing current fractal to 5 years of historical bull-trap sequences.</p>
+<div class="flex gap-2 mt-2">
+<span class="text-[9px] px-2 py-0.5 rounded bg-surface-container-highest text-secondary/70 border border-secondary/20">18.5ms</span>
+</div>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="relative flex items-start gap-6 pl-10">
+<div class="absolute left-0 w-10 h-10 rounded-full bg-surface-container-high border-2 border-tertiary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-tertiary text-lg" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Execution Validation</h4>
+<p class="text-xs text-on-surface-variant mt-1">Final risk check against portfolio exposure limits and slippage tolerance.</p>
+<div class="flex gap-2 mt-2">
+<span class="text-[9px] px-2 py-0.5 rounded bg-surface-container-highest text-tertiary/70 border border-tertiary/20">2.1ms</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section: Signals Used (Right Column) -->
+<div class="col-span-12 lg:col-span-5 flex flex-col gap-6">
+<!-- Signal Card: Technical -->
+<div class="glass-panel rounded-xl p-6 border border-white/5 hover:bg-surface-container/80 transition-all duration-500">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-[10px] uppercase font-bold tracking-widest text-primary/60 mb-1">Technical Layer</p>
+<h4 class="font-headline text-lg font-bold">Indicator Convergence</h4>
+</div>
+<span class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined" data-icon="monitoring">monitoring</span>
+</span>
+</div>
+<div class="space-y-5">
+<div class="flex justify-between items-center p-3 bg-surface-container-highest/30 rounded-lg">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-6 rounded-full bg-tertiary"></div>
+<div>
+<p class="text-xs font-bold text-on-surface">RSI (14)</p>
+<p class="text-[10px] text-on-surface-variant">30.2 - Oversold Zone</p>
+</div>
+</div>
+<span class="text-xs font-bold text-tertiary">BULLISH</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-surface-container-highest/30 rounded-lg">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-6 rounded-full bg-tertiary"></div>
+<div>
+<p class="text-xs font-bold text-on-surface">Double Bottom</p>
+<p class="text-[10px] text-on-surface-variant">Confirmed on 4H Chart</p>
+</div>
+</div>
+<span class="text-xs font-bold text-tertiary">MATCH 94%</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-surface-container-highest/30 rounded-lg opacity-50">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-6 rounded-full bg-outline"></div>
+<div>
+<p class="text-xs font-bold text-on-surface">Bollinger Bands</p>
+<p class="text-[10px] text-on-surface-variant">Mid-band resistance ahead</p>
+</div>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">NEUTRAL</span>
+</div>
+</div>
+</div>
+<!-- Signal Card: Sentiment -->
+<div class="glass-panel rounded-xl p-6 border border-white/5 bg-gradient-to-br from-surface-container to-surface-container-high shadow-xl">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-[10px] uppercase font-bold tracking-widest text-secondary/60 mb-1">Sentiment Layer</p>
+<h4 class="font-headline text-lg font-bold">Social &amp; News Pulse</h4>
+</div>
+<span class="p-2 rounded-lg bg-secondary-container/10 text-secondary">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div class="p-4 rounded-xl bg-surface-container-low border border-white/5 flex flex-col items-center justify-center text-center">
+<span class="text-2xl font-headline font-bold text-tertiary">78%</span>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-tighter mt-1">Social Positivity</span>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-low border border-white/5 flex flex-col items-center justify-center text-center">
+<span class="text-2xl font-headline font-bold text-secondary">Low</span>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-tighter mt-1">Fear Intensity</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest/50 p-4 rounded-lg border border-secondary/10">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<p class="text-xs font-bold text-secondary">AI Insight Chip</p>
+</div>
+<p class="text-[11px] text-on-surface-variant italic">"Current social despair combined with institutional spot-buying inflows creates a 'Hidden Recovery' signature commonly seen before 5-10% rallies."</p>
+</div>
+</div>
+<!-- Visual Component: Live Neural Map (Conceptual Decor) -->
+<div class="glass-panel rounded-xl p-1 h-64 border border-white/5 overflow-hidden group">
+<div class="relative w-full h-full bg-surface-container-lowest rounded-lg overflow-hidden flex items-center justify-center">
+<img alt="Neural Network Visualization" class="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-[5s]" data-alt="Abstract 3D digital visualization of a neural network with glowing interconnected nodes and cyan light lines on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1cZJwCDP-1HQEyPezdQ1EoCZwaURhhTYovP1RrRw4od_b7W2wvpn916kLptjrlNcgTGcl92aorSmclWhTJVA0bYHbBibBbcf24UUrS6R-RE6DOjF4NGwvABGY-u0UP2TK5HJ2Tm-uAp7t7E1T0-tmzuZP-FKcDeC6yeqD6HdWF6FI9fqZL65x7yW9L91nKEaCo5g_INZ6M2kXCbLPL2DFRTIcbjVnmIFlAUac4iwcE0XpFN5wQCM6gL8naGUh46mqrzjFyxZGXkc"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
+<div class="absolute bottom-4 left-4 right-4">
+<div class="flex justify-between items-end">
+<div>
+<p class="text-[10px] text-primary/80 uppercase font-black">Live Analysis</p>
+<p class="text-xs font-bold">Dynamic Weights</p>
+</div>
+<div class="flex gap-1 h-8 items-end">
+<div class="w-1 bg-primary/40 h-1/2"></div>
+<div class="w-1 bg-primary/60 h-3/4"></div>
+<div class="w-1 bg-primary h-full glow-primary"></div>
+<div class="w-1 bg-primary/80 h-2/3"></div>
+<div class="w-1 bg-primary/40 h-1/3"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Overlay Modal (Placeholder for Glass Box detail) -->
+<div class="fixed bottom-8 right-8 z-[60] flex flex-col items-end gap-3 pointer-events-none">
+<div class="glass-panel p-4 rounded-2xl border border-white/10 shadow-2xl pointer-events-auto max-w-xs transform translate-y-2 opacity-0 animate-fade-in group hover:translate-y-0 transition-all duration-500" style="animation: fadeInUp 0.8s forwards 1s;">
+<div class="flex items-center gap-3 mb-3">
+<div class="p-2 rounded-full bg-tertiary-container/20 text-tertiary">
+<span class="material-symbols-outlined" data-icon="shield_with_heart" style="font-variation-settings: 'FILL' 1;">shield_with_heart</span>
+</div>
+<p class="text-xs font-bold text-on-surface">Trust Score: 98.4%</p>
+</div>
+<p class="text-[10px] text-on-surface-variant">The AI logic has been verified against historical manipulation signatures and passed 10/10 safety oracles.</p>
+</div>
+</div>
+<style>
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</body></html>

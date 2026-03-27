@@ -11,7 +11,8 @@ ENV VITE_DATA_URL=${VITE_DATA_URL}
 ENV VITE_PROFILE_URL=${VITE_PROFILE_URL}
 
 COPY ForesightX-frontend/package.json ./package.json
-RUN npm install
+COPY ForesightX-frontend/package-lock.json ./package-lock.json
+RUN npm ci
 
 COPY ForesightX-frontend .
 RUN npm run build
