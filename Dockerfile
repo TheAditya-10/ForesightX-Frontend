@@ -5,10 +5,14 @@ WORKDIR /app
 ARG VITE_ORCHESTRATION_URL=http://localhost:8000
 ARG VITE_DATA_URL=http://localhost:8001
 ARG VITE_PROFILE_URL=http://localhost:8002
+ARG VITE_PATTERN_URL=http://localhost:8003
+ARG VITE_AUTH_URL=http://localhost:8004
 
 ENV VITE_ORCHESTRATION_URL=${VITE_ORCHESTRATION_URL}
 ENV VITE_DATA_URL=${VITE_DATA_URL}
 ENV VITE_PROFILE_URL=${VITE_PROFILE_URL}
+ENV VITE_PATTERN_URL=${VITE_PATTERN_URL}
+ENV VITE_AUTH_URL=${VITE_AUTH_URL}
 
 COPY ForesightX-frontend/package.json ./package.json
 COPY ForesightX-frontend/package-lock.json ./package-lock.json
