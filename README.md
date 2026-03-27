@@ -1,14 +1,23 @@
 # ForesightX Frontend
 
-This frontend now serves the Stitch exports for project `2167215292630121994`.
+This frontend is now a real microservice-integrated UI aligned to the Stitch visual direction from project `2167215292630121994`.
 
 ## What changed
 
-- downloaded the hosted Stitch HTML for four screens into `public/stitch/`
-- downloaded matching screenshots into `public/stitch/screenshots/`
-- replaced the previous React dashboard UI with a lightweight local viewer for those assets
+- replaced the previous static Stitch-export browser with a unified application shell
+- wired the UI to orchestration, data, and profile services through frontend-origin `/api/*` proxies
+- rebuilt the main experience around four product views: dashboard, explainability, portfolio, and alerts
+- kept the downloaded Stitch exports in `public/stitch/` as local design references
 
-## Screens mirrored locally
+## Service routing
+
+- `/api/orchestration/*` -> orchestration service
+- `/api/data/*` -> market data service
+- `/api/profile/*` -> profile service
+
+The frontend uses proxying because the backend services do not currently expose browser CORS middleware.
+
+## Stitch references kept locally
 
 - `Dashboard (Home)` `cdfac24b8fec4f88a45ddcac5f1b9e9c`
 - `AI Explainability Panel` `b093055bc0d0434b8aa313d391b5d004`
