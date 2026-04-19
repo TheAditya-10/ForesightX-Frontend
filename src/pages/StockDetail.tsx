@@ -1,0 +1,374 @@
+import { useEffect, useMemo, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Sparkles, TrendingUp, TrendingDown, Activity, BarChart3, Plus, Minus } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { STOCKS, generateSeries, getIndicators, getNewsForSymbol, predictStock, type Timeframe } from "@/lib/mockData";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import {
+  fetchHistory,
+  fetchIndicators,
+  fetchNews,
+  fetchPrediction,
+  fetchPrice,
+  updatePortfolioPosition,
+} from "@/lib/platform-api";
+import { getUserId } from "@/lib/session";
+
+const TIMEFRAMES: { id: Timeframe; label: string; points: number }[] = [
+  { id: "1D", label: "Today", points: 32 },
+  { id: "1W", label: "1W", points: 40 },
+  { id: "1M", label: "1M", points: 60 },
+  { id: "1Y", label: "1Y", points: 120 },
+];
+
+const StockDetail = () => {
+  const { symbol = "" } = useParams();
+  const navigate = useNavigate();
+  const stock = STOCKS.find((s) => s.symbol.toLowerCase() === symbol.toLowerCase());
+  const [tf, setTf] = useState<Timeframe>("1D");
+  const [seekOpen, setSeekOpen] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const [history, setHistory] = useState<Array<{ t: string; price: number }>>([]);
+  const [indicators, setIndicators] = useState<ReturnType<typeof getIndicators> | null>(null);
+  const [news, setNews] = useState(getNewsForSymbol(symbol));
+  const [prediction, setPrediction] = useState<{
+    nextHour: number;
+    nextHourErr: number;
+    nextDay: number;
+    nextDayErr: number;
+    dayAfter: number;
+    dayAfterErr: number;
+    trend: "bullish" | "bearish";
+    confidence: number;
+    verdict: string;
+  } | null>(null);
+
+  const currentPrice = livePrice ?? stock?.price ?? 0;
+
+  useEffect(() => {
+    if (!stock) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const [priceResponse, historyResponse, indicatorResponse, newsResponse] = await Promise.all([
+          fetchPrice(stock.symbol),
+          fetchHistory(stock.symbol, TIMEFRAMES.find((entry) => entry.id === tf)?.points ?? 60),
+          fetchIndicators(stock.symbol),
+          fetchNews(stock.symbol),
+        ]);
+        if (!mounted) return;
+        setLivePrice(priceResponse.price);
+        setHistory(
+          historyResponse.map((point) => ({
+            t: new Date(point.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            price: point.close,
+          }))
+        );
+        setIndicators({
+          rsi: indicatorResponse.rsi,
+          macd: indicatorResponse.macd,
+          sma50: priceResponse.price * 0.97,
+          sma200: priceResponse.price * 0.91,
+          volume: 1_000_000,
+          pe: 20,
+          high52: priceResponse.price * 1.14,
+          low52: priceResponse.price * 0.76,
+        });
+        setNews(newsResponse);
+      } catch {
+        const fallbackSeries = generateSeries(stock.symbol, stock.price, tf);
+        setHistory(fallbackSeries);
+        setIndicators(getIndicators(stock.symbol, stock.price));
+        setNews(getNewsForSymbol(stock.symbol));
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [stock, tf]);
+
+  useEffect(() => {
+    if (!stock) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const response = await fetchPrediction(stock.symbol);
+        if (!mounted) return;
+        const [h1, d1, d2] = response.predictions;
+        const trend = d2 >= currentPrice ? "bullish" : "bearish";
+        setPrediction({
+          nextHour: h1,
+          nextHourErr: Math.abs(response.intervals[0][1] - response.intervals[0][0]) / 2,
+          nextDay: d1,
+          nextDayErr: Math.abs(response.intervals[1][1] - response.intervals[1][0]) / 2,
+          dayAfter: d2,
+          dayAfterErr: Math.abs(response.intervals[2][1] - response.intervals[2][0]) / 2,
+          trend,
+          confidence: Math.round(response.confidence * 100),
+          verdict:
+            trend === "bullish"
+              ? `Momentum favors ${stock.symbol}. Platform is currently bullish with favorable confidence.`
+              : `Signals are mixed for ${stock.symbol}. Wait for stronger confirmation before scaling.`,
+        });
+      } catch {
+        setPrediction(predictStock(stock.symbol, currentPrice || stock.price));
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [stock, currentPrice]);
+
+  if (!stock) {
+    return (
+      <DashboardLayout activeTab="search">
+        <div className="text-center text-muted-foreground">
+          Stock not found.{" "}
+          <Link className="text-accent hover:underline" to="/dashboard/search">
+            Search again
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const refPrice = stock.price;
+  const up = currentPrice >= refPrice;
+  const series = history.length > 0 ? history : generateSeries(stock.symbol, currentPrice || stock.price, tf);
+  const min = Math.min(...series.map((d) => d.price));
+  const max = Math.max(...series.map((d) => d.price));
+
+  const handleBuy = async () => {
+    try {
+      await updatePortfolioPosition(getUserId(), stock.symbol, qty);
+      toast.success(`Added ${qty} share${qty > 1 ? "s" : ""} of ${stock.symbol} to portfolio`, {
+        description: `Estimated value: $${(qty * currentPrice).toFixed(2)}`,
+      });
+      setSeekOpen(false);
+      setTimeout(() => navigate("/dashboard/profile"), 500);
+    } catch (err) {
+      toast.error("Portfolio update failed", {
+        description: err instanceof Error ? err.message : "Please retry.",
+      });
+    }
+  };
+
+  return (
+    <DashboardLayout activeTab="search">
+      <Link to="/dashboard/search" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> Back to search
+      </Link>
+
+      <div className="mt-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary font-mono font-semibold">
+              {(stock.displaySymbol ?? stock.symbol).slice(0, 3)}
+            </div>
+            <div>
+              <h1 className="font-display text-2xl font-semibold tracking-tight">{stock.name}</h1>
+              <div className="text-xs text-muted-foreground">{stock.symbol} · {stock.sector}</div>
+            </div>
+          </div>
+          <div className="mt-5 flex items-baseline gap-3">
+            <span className="font-mono-tabular font-display text-4xl font-semibold">${currentPrice.toLocaleString()}</span>
+            <span className={cn("font-mono-tabular flex items-center gap-1 text-sm font-medium", up ? "text-success" : "text-loss")}>
+              {up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+              {up ? "+" : ""}{(currentPrice - refPrice).toFixed(2)} ({up ? "+" : ""}{(((currentPrice - refPrice) / refPrice) * 100).toFixed(2)}%)
+            </span>
+            <span className="text-xs text-muted-foreground">Live quote</span>
+          </div>
+        </div>
+
+        <Button size="lg" className="rounded-full px-6 shadow-glow" onClick={() => setSeekOpen(true)}>
+          <Sparkles className="mr-2 h-4 w-4" /> Seek prediction
+        </Button>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-elegant">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <BarChart3 className="h-4 w-4 text-accent" /> Price chart
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/50 p-1">
+            {TIMEFRAMES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTf(t.id)}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-xs font-medium transition-all",
+                  tf === t.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="h-[360px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={series} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--chart-area))" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="hsl(var(--chart-area))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="hsl(var(--chart-grid))" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="t" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(series.length / 8) - 1)} />
+              <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[min * 0.995, max * 1.005]} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 12,
+                  fontSize: 12,
+                  boxShadow: "var(--shadow-elegant)",
+                }}
+                labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                formatter={(v: number) => [`$${v.toFixed(2)}`, "Price"]}
+              />
+              <Area type="monotone" dataKey="price" stroke="hsl(var(--chart-line))" strokeWidth={2} fill="url(#areaFill)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-elegant lg:col-span-1">
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Activity className="h-4 w-4 text-accent" /> Key indicators
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {indicators &&
+              [
+                { label: "RSI (14)", value: indicators.rsi.toFixed(1), tone: indicators.rsi > 70 ? "down" : indicators.rsi < 30 ? "up" : undefined },
+                { label: "MACD", value: indicators.macd.toFixed(2), tone: indicators.macd >= 0 ? "up" : "down" },
+                { label: "SMA 50", value: `$${indicators.sma50.toFixed(2)}` },
+                { label: "SMA 200", value: `$${indicators.sma200.toFixed(2)}` },
+                { label: "Volume", value: `${(indicators.volume / 1_000_000).toFixed(2)}M` },
+                { label: "P/E", value: indicators.pe.toFixed(1) },
+                { label: "52W High", value: `$${indicators.high52.toFixed(2)}` },
+                { label: "52W Low", value: `$${indicators.low52.toFixed(2)}` },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{item.label}</div>
+                  <div className={cn("font-mono-tabular mt-1 text-base font-semibold", item.tone === "up" && "text-success", item.tone === "down" && "text-loss")}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-elegant lg:col-span-2">
+          <div className="mb-4 text-sm text-muted-foreground">
+            News related to <span className="font-mono text-foreground">{stock.symbol}</span>
+          </div>
+          <div className="space-y-4">
+            {news.slice(0, 4).map((item) => (
+              <div key={item.id} className="border-b border-border/60 pb-4 last:border-0 last:pb-0">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-accent">{item.tag}</span>
+                  <span className="text-muted-foreground">· {item.source} · {item.time}</span>
+                </div>
+                <h4 className="font-display mt-1.5 text-base font-medium leading-snug">{item.title}</h4>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={seekOpen} onOpenChange={setSeekOpen}>
+        <DialogContent className="max-w-lg overflow-hidden border-border bg-card p-0">
+          <div className="relative bg-surface p-6">
+            <div className="absolute inset-0 bg-hero-glow opacity-60" />
+            <div className="relative">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-accent shadow-glow">
+                    <Sparkles className="h-4 w-4 text-accent-foreground" />
+                  </div>
+                  <DialogTitle className="font-display text-xl">Seek · {stock.symbol}</DialogTitle>
+                </div>
+                <DialogDescription>AI-driven prediction · Confidence {prediction?.confidence ?? 0}%</DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {prediction &&
+                  [
+                    { label: "Next hour", value: prediction.nextHour, err: prediction.nextHourErr },
+                    { label: "Next day", value: prediction.nextDay, err: prediction.nextDayErr },
+                    { label: "Day after", value: prediction.dayAfter, err: prediction.dayAfterErr },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{item.label}</div>
+                      <div className="font-mono-tabular mt-1 text-base font-semibold">${item.value.toFixed(2)}</div>
+                      <div className="font-mono-tabular text-xs text-muted-foreground">± ${item.err.toFixed(2)}</div>
+                    </div>
+                  ))}
+              </div>
+
+              {prediction && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Confidence</div>
+                    <div className="font-mono-tabular mt-1 text-base font-semibold">{prediction.confidence}%</div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div className="h-full rounded-full bg-accent" style={{ width: `${prediction.confidence}%` }} />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Trend</div>
+                    <div className={cn("mt-1 inline-flex items-center gap-1.5 text-base font-semibold capitalize", prediction.trend === "bullish" ? "text-success" : "text-loss")}>
+                      {prediction.trend === "bullish" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      {prediction.trend}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className={cn("mt-5 rounded-xl border p-4 text-sm", prediction?.trend === "bullish" ? "border-success/30 bg-success/5" : "border-loss/30 bg-loss/5")}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Verdict</div>
+                <p className="mt-1 leading-relaxed">{prediction?.verdict}</p>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-border bg-card/80 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Quantity</span>
+                  <div className="inline-flex items-center gap-2">
+                    <button className="rounded-md border border-border p-1" onClick={() => setQty((prev) => Math.max(1, prev - 1))}>
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="w-10 text-center font-mono-tabular text-sm">{qty}</span>
+                    <button className="rounded-md border border-border p-1" onClick={() => setQty((prev) => prev + 1)}>
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground">Estimated order value: ${(qty * currentPrice).toFixed(2)}</div>
+              </div>
+
+              <div className="mt-5 flex gap-2">
+                <Button className="flex-1 rounded-lg shadow-glow" onClick={handleBuy}>
+                  BUY NOW
+                </Button>
+                <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setSeekOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </DashboardLayout>
+  );
+};
+
+export default StockDetail;
