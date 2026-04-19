@@ -73,27 +73,27 @@ export async function register(email: string, password: string) {
   return request<{
     user: { id: string; email: string; role: string };
     tokens: { access_token: string; refresh_token: string };
-  }>("/api/auth/auth/register", "POST", { email, password });
+  }>("/api/auth/auth/sign-up", "POST", { email, password });
 }
 
 export async function login(email: string, password: string) {
   return request<{
     user: { id: string; email: string; role: string };
     tokens: { access_token: string; refresh_token: string };
-  }>("/api/auth/auth/login", "POST", { email, password });
+  }>("/api/auth/auth/sign-in", "POST", { email, password });
 }
 
 export async function logout(refreshToken: string) {
-  return request<{ message: string }>("/api/auth/auth/logout", "POST", { refresh_token: refreshToken });
+  return request<{ message: string }>("/api/auth/auth/sign-out", "POST", { refresh_token: refreshToken });
 }
 
 export function googleLoginUrl() {
-  return "/api/auth/oauth/google/login";
+  return "/api/auth/oauth/google/authorize";
 }
 
 export async function createProfile(userId: string, email: string) {
   return request<{ user_id: string; name: string; risk_level: string }>(
-    "/api/profile/api/v1/profile/create",
+    "/api/profile/profiles",
     "POST",
     { user_id: userId, email }
   );
