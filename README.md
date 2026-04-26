@@ -9,6 +9,9 @@ This frontend is now a real microservice-integrated UI aligned to the Stitch vis
 - wired the UI to auth, orchestration, data, profile, and pattern services through frontend-origin `/api/*` proxies
 - rebuilt the main experience around five product views: command center, explainability, portfolio, pattern lab, and alerts
 - added live health surfaces, orchestration job history, pattern forecast panels, and profile trade mutation testing
+- wired search to orchestration-backed company/ticker discovery
+- wired seek dialog to Gemini-backed orchestration recommendation output
+- enabled websocket proxying for live ticker stream updates from data service
 - kept the downloaded Stitch exports in `public/stitch/` as local design references
 
 ## Service routing

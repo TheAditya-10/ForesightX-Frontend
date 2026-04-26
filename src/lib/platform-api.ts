@@ -47,6 +47,20 @@ export type PatternPrediction = {
   modelVersion: string;
 };
 
+export type InstrumentSearchResult = {
+  ticker: string;
+  name: string;
+  exchange?: string | null;
+  score: number;
+};
+
+export type TradeRecommendation = {
+  action: "BUY" | "SELL" | "HOLD";
+  confidence: number;
+  recommendation: string;
+  reason: string[];
+};
+
 type HttpMethod = "GET" | "POST";
 
 async function request<T>(path: string, method: HttpMethod = "GET", body?: unknown): Promise<T> {
@@ -196,5 +210,37 @@ export async function fetchPrediction(ticker: string): Promise<PatternPrediction
       [raw.intervals[2][0], raw.intervals[2][1]],
     ],
     modelVersion: raw.model_version,
+  };
+}
+
+export async function searchInstruments(query: string, limit = 15): Promise<InstrumentSearchResult[]> {
+  const raw = await request<{
+    query: string;
+    results: Array<{ ticker: string; name?: string | null; exchange?: string | null; score?: number }>;
+  }>(`/api/orchestration/instruments/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  return raw.results.map((item) => ({
+    ticker: item.ticker,
+    name: item.name || item.ticker,
+    exchange: item.exchange,
+    score: item.score ?? 0,
+  }));
+}
+
+export async function fetchTradeRecommendation(userId: string, ticker: string): Promise<TradeRecommendation> {
+  const raw = await request<{
+    action: "BUY" | "SELL" | "HOLD";
+    confidence: number;
+    recommendation: string;
+    reason: string[];
+  }>("/api/orchestration/analyze", "POST", {
+    user_id: userId,
+    ticker,
+    event: "market_update",
+  });
+  return {
+    action: raw.action,
+    confidence: raw.confidence,
+    recommendation: raw.recommendation,
+    reason: raw.reason,
   };
 }

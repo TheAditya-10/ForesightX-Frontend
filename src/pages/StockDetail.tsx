@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, TrendingUp, TrendingDown, Activity, BarChart3, Plus, Minus } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -14,6 +14,7 @@ import {
   fetchNews,
   fetchPrediction,
   fetchPrice,
+  fetchTradeRecommendation,
   updatePortfolioPosition,
 } from "@/lib/platform-api";
 import { getUserId } from "@/lib/session";
@@ -28,14 +29,17 @@ const TIMEFRAMES: { id: Timeframe; label: string; points: number }[] = [
 const StockDetail = () => {
   const { symbol = "" } = useParams();
   const navigate = useNavigate();
-  const stock = STOCKS.find((s) => s.symbol.toLowerCase() === symbol.toLowerCase());
+  const stock = STOCKS.find((item) => item.symbol.toLowerCase() === symbol.toLowerCase());
+  const ticker = (stock?.symbol ?? symbol).toUpperCase().trim();
+
   const [tf, setTf] = useState<Timeframe>("1D");
   const [seekOpen, setSeekOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [history, setHistory] = useState<Array<{ t: string; price: number }>>([]);
   const [indicators, setIndicators] = useState<ReturnType<typeof getIndicators> | null>(null);
-  const [news, setNews] = useState(getNewsForSymbol(symbol));
+  const [news, setNews] = useState(getNewsForSymbol(ticker || symbol));
+  const [isSeekLoading, setIsSeekLoading] = useState(false);
   const [prediction, setPrediction] = useState<{
     nextHour: number;
     nextHourErr: number;
@@ -48,18 +52,21 @@ const StockDetail = () => {
     verdict: string;
   } | null>(null);
 
+  const stockName = stock?.name ?? ticker;
+  const stockSector = stock?.sector ?? "Market";
+  const displaySymbol = stock?.displaySymbol ?? ticker;
   const currentPrice = livePrice ?? stock?.price ?? 0;
 
   useEffect(() => {
-    if (!stock) return;
+    if (!ticker) return;
     let mounted = true;
     (async () => {
       try {
         const [priceResponse, historyResponse, indicatorResponse, newsResponse] = await Promise.all([
-          fetchPrice(stock.symbol),
-          fetchHistory(stock.symbol, TIMEFRAMES.find((entry) => entry.id === tf)?.points ?? 60),
-          fetchIndicators(stock.symbol),
-          fetchNews(stock.symbol),
+          fetchPrice(ticker),
+          fetchHistory(ticker, TIMEFRAMES.find((entry) => entry.id === tf)?.points ?? 60),
+          fetchIndicators(ticker),
+          fetchNews(ticker),
         ]);
         if (!mounted) return;
         setLivePrice(priceResponse.price);
@@ -81,50 +88,75 @@ const StockDetail = () => {
         });
         setNews(newsResponse);
       } catch {
-        const fallbackSeries = generateSeries(stock.symbol, stock.price, tf);
-        setHistory(fallbackSeries);
-        setIndicators(getIndicators(stock.symbol, stock.price));
-        setNews(getNewsForSymbol(stock.symbol));
+        const fallback = stock?.price || 100;
+        setHistory(generateSeries(ticker, fallback, tf));
+        setIndicators(getIndicators(ticker, fallback));
+        setNews(getNewsForSymbol(ticker));
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [stock, tf]);
+  }, [ticker, tf, stock?.price]);
 
   useEffect(() => {
-    if (!stock) return;
+    if (!ticker) return;
     let mounted = true;
     (async () => {
+      setIsSeekLoading(true);
       try {
-        const response = await fetchPrediction(stock.symbol);
+        const [patternResponse, recommendationResponse] = await Promise.all([
+          fetchPrediction(ticker),
+          fetchTradeRecommendation(getUserId(), ticker),
+        ]);
         if (!mounted) return;
-        const [h1, d1, d2] = response.predictions;
-        const trend = d2 >= currentPrice ? "bullish" : "bearish";
+        const [h1, d1, d2] = patternResponse.predictions;
+        const referencePrice = livePrice ?? stock?.price ?? h1;
+        const trend = d2 >= referencePrice ? "bullish" : "bearish";
         setPrediction({
           nextHour: h1,
-          nextHourErr: Math.abs(response.intervals[0][1] - response.intervals[0][0]) / 2,
+          nextHourErr: Math.abs(patternResponse.intervals[0][1] - patternResponse.intervals[0][0]) / 2,
           nextDay: d1,
-          nextDayErr: Math.abs(response.intervals[1][1] - response.intervals[1][0]) / 2,
+          nextDayErr: Math.abs(patternResponse.intervals[1][1] - patternResponse.intervals[1][0]) / 2,
           dayAfter: d2,
-          dayAfterErr: Math.abs(response.intervals[2][1] - response.intervals[2][0]) / 2,
+          dayAfterErr: Math.abs(patternResponse.intervals[2][1] - patternResponse.intervals[2][0]) / 2,
           trend,
-          confidence: Math.round(response.confidence * 100),
-          verdict:
-            trend === "bullish"
-              ? `Momentum favors ${stock.symbol}. Platform is currently bullish with favorable confidence.`
-              : `Signals are mixed for ${stock.symbol}. Wait for stronger confirmation before scaling.`,
+          confidence: Math.round(recommendationResponse.confidence * 100),
+          verdict: recommendationResponse.recommendation,
         });
       } catch {
-        setPrediction(predictStock(stock.symbol, currentPrice || stock.price));
+        setPrediction(predictStock(ticker, currentPrice || stock?.price || 100));
+      } finally {
+        if (mounted) {
+          setIsSeekLoading(false);
+        }
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [stock, currentPrice]);
+  }, [ticker]);
 
-  if (!stock) {
+  useEffect(() => {
+    if (!ticker) return;
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${protocol}://${window.location.host}/api/data/stream/${encodeURIComponent(ticker)}`);
+    socket.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { type?: string; data?: { price?: number } };
+        if (payload.type === "tick" && payload.data?.price && Number.isFinite(payload.data.price)) {
+          setLivePrice(payload.data.price);
+        }
+      } catch {
+        // Ignore malformed stream payloads.
+      }
+    };
+    return () => {
+      socket.close();
+    };
+  }, [ticker]);
+
+  if (!ticker) {
     return (
       <DashboardLayout activeTab="search">
         <div className="text-center text-muted-foreground">
@@ -137,16 +169,16 @@ const StockDetail = () => {
     );
   }
 
-  const refPrice = stock.price;
-  const up = currentPrice >= refPrice;
-  const series = history.length > 0 ? history : generateSeries(stock.symbol, currentPrice || stock.price, tf);
+  const series = history.length > 0 ? history : generateSeries(ticker, currentPrice || stock?.price || 100, tf);
   const min = Math.min(...series.map((d) => d.price));
   const max = Math.max(...series.map((d) => d.price));
+  const refPrice = stock?.price ?? (series.length > 0 ? series[0].price : currentPrice || 1);
+  const up = currentPrice >= refPrice;
 
   const handleBuy = async () => {
     try {
-      await updatePortfolioPosition(getUserId(), stock.symbol, qty);
-      toast.success(`Added ${qty} share${qty > 1 ? "s" : ""} of ${stock.symbol} to portfolio`, {
+      await updatePortfolioPosition(getUserId(), ticker, qty);
+      toast.success(`Added ${qty} share${qty > 1 ? "s" : ""} of ${ticker} to portfolio`, {
         description: `Estimated value: $${(qty * currentPrice).toFixed(2)}`,
       });
       setSeekOpen(false);
@@ -168,18 +200,20 @@ const StockDetail = () => {
         <div>
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary font-mono font-semibold">
-              {(stock.displaySymbol ?? stock.symbol).slice(0, 3)}
+              {displaySymbol.slice(0, 3)}
             </div>
             <div>
-              <h1 className="font-display text-2xl font-semibold tracking-tight">{stock.name}</h1>
-              <div className="text-xs text-muted-foreground">{stock.symbol} · {stock.sector}</div>
+              <h1 className="font-display text-2xl font-semibold tracking-tight">{stockName}</h1>
+              <div className="text-xs text-muted-foreground">{ticker} · {stockSector}</div>
             </div>
           </div>
           <div className="mt-5 flex items-baseline gap-3">
             <span className="font-mono-tabular font-display text-4xl font-semibold">${currentPrice.toLocaleString()}</span>
             <span className={cn("font-mono-tabular flex items-center gap-1 text-sm font-medium", up ? "text-success" : "text-loss")}>
               {up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              {up ? "+" : ""}{(currentPrice - refPrice).toFixed(2)} ({up ? "+" : ""}{(((currentPrice - refPrice) / refPrice) * 100).toFixed(2)}%)
+              {up ? "+" : ""}
+              {(currentPrice - refPrice).toFixed(2)} ({up ? "+" : ""}
+              {(((currentPrice - refPrice) / Math.max(refPrice, 1)) * 100).toFixed(2)}%)
             </span>
             <span className="text-xs text-muted-foreground">Live quote</span>
           </div>
@@ -269,7 +303,7 @@ const StockDetail = () => {
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-elegant lg:col-span-2">
           <div className="mb-4 text-sm text-muted-foreground">
-            News related to <span className="font-mono text-foreground">{stock.symbol}</span>
+            News related to <span className="font-mono text-foreground">{ticker}</span>
           </div>
           <div className="space-y-4">
             {news.slice(0, 4).map((item) => (
@@ -295,9 +329,11 @@ const StockDetail = () => {
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-accent shadow-glow">
                     <Sparkles className="h-4 w-4 text-accent-foreground" />
                   </div>
-                  <DialogTitle className="font-display text-xl">Seek · {stock.symbol}</DialogTitle>
+                  <DialogTitle className="font-display text-xl">Seek · {ticker}</DialogTitle>
                 </div>
-                <DialogDescription>AI-driven prediction · Confidence {prediction?.confidence ?? 0}%</DialogDescription>
+                <DialogDescription>
+                  AI-driven prediction {isSeekLoading ? "· syncing..." : `· Confidence ${prediction?.confidence ?? 0}%`}
+                </DialogDescription>
               </DialogHeader>
 
               <div className="mt-5 grid grid-cols-3 gap-3">

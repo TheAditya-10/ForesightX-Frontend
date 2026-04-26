@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
         "/api/data": {
           target: env.VITE_DATA_URL || "http://localhost:8001",
           changeOrigin: true,
+          ws: true,
           rewrite: (pathValue) => pathValue.replace(/^\/api\/data/, ""),
         },
         "/api/profile": {

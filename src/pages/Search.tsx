@@ -5,11 +5,40 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { STOCKS } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
-import { fetchPrice } from "@/lib/platform-api";
+import { fetchPrice, searchInstruments } from "@/lib/platform-api";
 
 const Search = () => {
   const [q, setQ] = useState("");
   const [livePrices, setLivePrices] = useState<Record<string, { price: number; change: number; changePct: number }>>({});
+  const [remoteMatches, setRemoteMatches] = useState<Array<{ symbol: string; name: string; sector: string }>>([]);
+
+  useEffect(() => {
+    const query = q.trim();
+    if (!query) {
+      setRemoteMatches([]);
+      return;
+    }
+    let mounted = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await searchInstruments(query, 20);
+        if (!mounted) return;
+        setRemoteMatches(
+          results.map((item) => ({
+            symbol: item.ticker,
+            name: item.name || item.ticker,
+            sector: item.exchange || "Market",
+          }))
+        );
+      } catch {
+        if (mounted) setRemoteMatches([]);
+      }
+    }, 250);
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+    };
+  }, [q]);
 
   useEffect(() => {
     let mounted = true;
@@ -48,11 +77,28 @@ const Search = () => {
     [livePrices]
   );
 
-  const filtered = merged.filter(s =>
-    s.symbol.toLowerCase().includes(q.toLowerCase()) ||
-    s.name.toLowerCase().includes(q.toLowerCase()) ||
-    s.sector.toLowerCase().includes(q.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const local = merged.filter(s =>
+      s.symbol.toLowerCase().includes(q.toLowerCase()) ||
+      s.name.toLowerCase().includes(q.toLowerCase()) ||
+      s.sector.toLowerCase().includes(q.toLowerCase())
+    );
+    if (!q.trim() || remoteMatches.length === 0) return local;
+
+    const seen = new Set(local.map((item) => item.symbol));
+    const remoteNormalized = remoteMatches
+      .filter((item) => !seen.has(item.symbol))
+      .map((item) => ({
+        symbol: item.symbol,
+        displaySymbol: item.symbol,
+        name: item.name,
+        sector: item.sector,
+        price: 0,
+        change: 0,
+        changePct: 0,
+      }));
+    return [...local, ...remoteNormalized];
+  }, [merged, q, remoteMatches]);
 
   return (
     <DashboardLayout activeTab="search">
