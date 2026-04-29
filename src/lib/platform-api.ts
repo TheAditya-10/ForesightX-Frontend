@@ -61,7 +61,20 @@ export type TradeRecommendation = {
   reason: string[];
 };
 
-type HttpMethod = "GET" | "POST";
+type HttpMethod = "GET" | "POST" | "PATCH";
+
+export type UserProfile = {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  pan: string;
+  city: string;
+  photo: string;
+  riskLevel: "low" | "medium" | "high";
+};
+
+export type SignupProfileInput = Omit<UserProfile, "userId">;
 
 async function request<T>(path: string, method: HttpMethod = "GET", body?: unknown): Promise<T> {
   const headers: Record<string, string> = {
@@ -83,11 +96,20 @@ async function request<T>(path: string, method: HttpMethod = "GET", body?: unkno
   return (await response.json()) as T;
 }
 
-export async function register(email: string, password: string) {
+export async function register(email: string, password: string, profile: SignupProfileInput) {
   return request<{
     user: { id: string; email: string; role: string };
     tokens: { access_token: string; refresh_token: string };
-  }>("/api/auth/auth/sign-up", "POST", { email, password });
+  }>("/api/auth/auth/sign-up", "POST", {
+    email,
+    password,
+    name: profile.name,
+    phone: profile.phone,
+    pan: profile.pan,
+    city: profile.city,
+    photo: profile.photo || null,
+    risk_level: profile.riskLevel,
+  });
 }
 
 export async function login(email: string, password: string) {
@@ -111,6 +133,64 @@ export async function createProfile(userId: string, email: string) {
     "POST",
     { user_id: userId, email }
   );
+}
+
+function mapProfile(raw: {
+  user_id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  pan?: string | null;
+  city?: string | null;
+  photo?: string | null;
+  risk_level: string;
+}): UserProfile {
+  return {
+    userId: raw.user_id,
+    name: raw.name,
+    email: raw.email || "",
+    phone: raw.phone || "",
+    pan: raw.pan || "",
+    city: raw.city || "",
+    photo: raw.photo || "",
+    riskLevel: (raw.risk_level || "medium") as UserProfile["riskLevel"],
+  };
+}
+
+export async function fetchUserProfile(userId: string) {
+  const raw = await request<{
+    user_id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    pan?: string | null;
+    city?: string | null;
+    photo?: string | null;
+    risk_level: string;
+  }>(`/api/profile/profiles/${encodeURIComponent(userId)}`);
+  return mapProfile(raw);
+}
+
+export async function updateUserProfile(userId: string, profile: SignupProfileInput) {
+  const raw = await request<{
+    user_id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    pan?: string | null;
+    city?: string | null;
+    photo?: string | null;
+    risk_level: string;
+  }>(`/api/profile/profiles/${encodeURIComponent(userId)}`, "PATCH", {
+    name: profile.name,
+    email: profile.email,
+    phone: profile.phone,
+    pan: profile.pan,
+    city: profile.city,
+    photo: profile.photo || null,
+    risk_level: profile.riskLevel,
+  });
+  return mapProfile(raw);
 }
 
 export async function fetchPrice(ticker: string) {
@@ -162,6 +242,11 @@ export async function fetchPortfolio(userId: string) {
   const raw = await request<{
     user_id: string;
     name: string;
+    email?: string | null;
+    phone?: string | null;
+    pan?: string | null;
+    city?: string | null;
+    photo?: string | null;
     risk_level: string;
     cash: number;
     holdings: Array<{ ticker: string; quantity: number; avg_price: number; current_price: number }>;
@@ -169,6 +254,16 @@ export async function fetchPortfolio(userId: string) {
   return {
     userId: raw.user_id,
     name: raw.name,
+    profile: mapProfile({
+      user_id: raw.user_id,
+      name: raw.name,
+      email: raw.email,
+      phone: raw.phone,
+      pan: raw.pan,
+      city: raw.city,
+      photo: raw.photo,
+      risk_level: raw.risk_level,
+    }),
     riskLevel: raw.risk_level,
     cash: raw.cash,
     holdings: raw.holdings.map((item) => ({

@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (pathValue) => pathValue.replace(/^\/api\/profile/, ""),
         },
         "/api/pattern": {
-          target: env.VITE_PATTERN_URL || "http://localhost:8003",
+          target: env.VITE_PATTERN_URL || "http://localhost:8000/__pattern_unavailable__",
           changeOrigin: true,
           rewrite: (pathValue) => pathValue.replace(/^\/api\/pattern/, ""),
         },

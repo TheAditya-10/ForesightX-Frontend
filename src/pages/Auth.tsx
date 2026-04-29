@@ -7,28 +7,71 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { createProfile, googleLoginUrl, login, register } from "@/lib/platform-api";
+import { googleLoginUrl, login, register, type SignupProfileInput } from "@/lib/platform-api";
 import { saveSession } from "@/lib/session";
 
 type Mode = "login" | "signup";
+type SignupStep = 0 | 1 | 2;
+
+const passwordRules = [
+  "minimum 8 characters",
+  "one uppercase letter",
+  "one lowercase letter",
+  "one number",
+  "one symbol",
+];
+
+function getPasswordError(value: string) {
+  if (value.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Z]/.test(value)) return "Password must include one uppercase letter.";
+  if (!/[a-z]/.test(value)) return "Password must include one lowercase letter.";
+  if (!/\d/.test(value)) return "Password must include one number.";
+  if (!/[^A-Za-z0-9]/.test(value)) return "Password must include one symbol.";
+  return null;
+}
 
 const AuthShell = ({ mode }: { mode: Mode }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [signupStep, setSignupStep] = useState<SignupStep>(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [pan, setPan] = useState("");
+  const [city, setCity] = useState("");
+  const [riskLevel, setRiskLevel] = useState<SignupProfileInput["riskLevel"]>("medium");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "signup" && signupStep < 2) {
+      setSignupStep((signupStep + 1) as SignupStep);
+      setError(null);
+      return;
+    }
+
+    const passwordError = getPasswordError(password);
+    if (mode === "signup" && passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const auth =
         mode === "login"
           ? await login(email, password)
-          : await register(email, password);
+          : await register(email, password, {
+              name,
+              email,
+              phone,
+              pan,
+              city,
+              photo: "",
+              riskLevel,
+            });
       saveSession({
         accessToken: auth.tokens.access_token,
         refreshToken: auth.tokens.refresh_token,
@@ -38,13 +81,6 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
           role: auth.user.role,
         },
       });
-      if (mode === "signup") {
-        try {
-          await createProfile(auth.user.id, auth.user.email);
-        } catch {
-          // Profile may already exist; continue.
-        }
-      }
       navigate("/dashboard/profile");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
@@ -54,6 +90,7 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
   };
 
   const isLogin = mode === "login";
+  const stepLabel = ["Personal details", "Contact details", "Security"][signupStep];
 
   return (
     <div className="relative grid min-h-screen lg:grid-cols-2">
@@ -102,37 +139,96 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
               {isLogin ? "Sign in" : "Create your account"}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {isLogin ? "Use your credentials to access ForeSightX." : "Just a few details. You can complete your profile later."}
+              {isLogin ? "Use your credentials to access ForeSightX." : stepLabel}
             </p>
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               {!isLogin && (
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2].map((step) => (
+                    <div
+                      key={step}
+                      className={`h-1.5 rounded-full ${step <= signupStep ? "bg-accent" : "bg-border"}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {!isLogin && signupStep === 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="name">Full name</Label>
                   <Input id="name" placeholder="Aarav Sharma" value={name} onChange={(e) => setName(e.target.value)} required className="h-11" />
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@foresightx.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  {isLogin && (
-                    <button type="button" className="text-xs text-muted-foreground hover:text-foreground">
-                      Forgot?
-                    </button>
+
+              {(isLogin || (!isLogin && signupStep === 0)) && (
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" placeholder="you@foresightx.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-11" />
+                </div>
+              )}
+
+              {!isLogin && signupStep === 1 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" type="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} required className="h-11" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pan">PAN</Label>
+                    <Input id="pan" placeholder="ABCDE1234F" value={pan} onChange={(e) => setPan(e.target.value.toUpperCase())} required className="h-11" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" placeholder="Mumbai, IN" value={city} onChange={(e) => setCity(e.target.value)} required className="h-11" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="riskLevel">Risk level</Label>
+                    <select
+                      id="riskLevel"
+                      value={riskLevel}
+                      onChange={(e) => setRiskLevel(e.target.value as SignupProfileInput["riskLevel"])}
+                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {(isLogin || (!isLogin && signupStep === 2)) && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    {isLogin && (
+                      <button type="button" className="text-xs text-muted-foreground hover:text-foreground">
+                        Forgot?
+                      </button>
+                    )}
+                  </div>
+                  <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-11" />
+                  {!isLogin && (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Password rules: {passwordRules.join(", ")}.
+                    </p>
                   )}
                 </div>
-                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-11" />
-              </div>
+              )}
               {error && <p className="text-sm text-loss">{error}</p>}
 
-              <Button type="submit" className="h-11 w-full rounded-lg shadow-glow" disabled={loading}>
-                {loading ? "Please wait…" : isLogin ? "Sign in" : "Create account"}
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                {!isLogin && signupStep > 0 && (
+                  <Button type="button" variant="outline" className="h-11 flex-1 rounded-lg" onClick={() => setSignupStep((signupStep - 1) as SignupStep)} disabled={loading}>
+                    Back
+                  </Button>
+                )}
+                <Button type="submit" className="h-11 flex-1 rounded-lg shadow-glow" disabled={loading}>
+                  {loading ? "Please wait…" : isLogin ? "Sign in" : signupStep < 2 ? "Continue" : "Create account"}
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
 
               <div className="relative my-4 flex items-center">
                 <div className="h-px flex-1 bg-border" />

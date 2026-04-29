@@ -7,20 +7,28 @@ import { Label } from "@/components/ui/label";
 import { INITIAL_HOLDINGS } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { fetchPortfolio, fetchRisk } from "@/lib/platform-api";
-import { getUserId } from "@/lib/session";
+import { fetchPortfolio, fetchRisk, fetchUserProfile, updateUserProfile, type SignupProfileInput } from "@/lib/platform-api";
+import { getUserId, loadSession } from "@/lib/session";
+
+const emptyProfile: SignupProfileInput = {
+  name: "",
+  email: "",
+  phone: "",
+  pan: "",
+  city: "",
+  photo: "",
+  riskLevel: "medium",
+};
 
 const Profile = () => {
   const [editing, setEditing] = useState(false);
-  const [profile, setProfile] = useState({
-    name: "Aarav Sharma",
-    email: "aarav@foresightx.com",
-    phone: "+91 98765 43210",
-    pan: "ABCDE1234F",
-    city: "Mumbai, IN",
-    photo: "",
-  });
+  const [profile, setProfile] = useState<SignupProfileInput>(() => ({
+    ...emptyProfile,
+    email: loadSession()?.user.email || "",
+  }));
   const [tempProfile, setTempProfile] = useState(profile);
+  const [saving, setSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const [holdings, setHoldings] = useState(INITIAL_HOLDINGS);
   const [riskLevel, setRiskLevel] = useState("moderate");
@@ -30,8 +38,23 @@ const Profile = () => {
     let mounted = true;
     (async () => {
       try {
-        const [portfolio, risk] = await Promise.all([fetchPortfolio(userId), fetchRisk(userId)]);
+        const [userProfile, portfolio, risk] = await Promise.all([
+          fetchUserProfile(userId),
+          fetchPortfolio(userId),
+          fetchRisk(userId),
+        ]);
         if (!mounted) return;
+        const nextProfile: SignupProfileInput = {
+          name: userProfile.name,
+          email: userProfile.email,
+          phone: userProfile.phone,
+          pan: userProfile.pan,
+          city: userProfile.city,
+          photo: userProfile.photo,
+          riskLevel: userProfile.riskLevel,
+        };
+        setProfile(nextProfile);
+        setTempProfile(nextProfile);
         setHoldings(
           portfolio.holdings.map((item) => ({
             symbol: item.symbol,
@@ -42,8 +65,8 @@ const Profile = () => {
           }))
         );
         setRiskLevel(risk.risk_level);
-      } catch {
-        // Keep local fallback holdings for preview mode.
+      } catch (err) {
+        if (mounted) setProfileError(err instanceof Error ? err.message : "Could not load profile");
       }
     })();
     return () => {
@@ -64,6 +87,31 @@ const Profile = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    setProfileError(null);
+    try {
+      const saved = await updateUserProfile(getUserId(), tempProfile);
+      const nextProfile: SignupProfileInput = {
+        name: saved.name,
+        email: saved.email,
+        phone: saved.phone,
+        pan: saved.pan,
+        city: saved.city,
+        photo: saved.photo,
+        riskLevel: saved.riskLevel,
+      };
+      setProfile(nextProfile);
+      setTempProfile(nextProfile);
+      setRiskLevel(saved.riskLevel);
+      setEditing(false);
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout activeTab="profile">
       <div className="grid gap-6 lg:grid-cols-3">
@@ -77,7 +125,7 @@ const Profile = () => {
                     <img src={editing ? tempProfile.photo : profile.photo} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center font-display text-3xl font-semibold text-accent-foreground">
-                      {profile.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                      {(profile.name || "FX").split(" ").map(n => n[0]).join("").slice(0, 2)}
                     </div>
                   )}
                 </div>
@@ -88,7 +136,7 @@ const Profile = () => {
                   </label>
                 )}
               </div>
-              <h2 className="font-display mt-4 text-xl font-semibold">{profile.name}</h2>
+              <h2 className="font-display mt-4 text-xl font-semibold">{profile.name || "Your profile"}</h2>
               <p className="text-sm text-muted-foreground">{profile.email}</p>
               <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs uppercase">
                 <span className="h-1.5 w-1.5 rounded-full bg-success" /> Verified Trader
@@ -104,21 +152,39 @@ const Profile = () => {
                     <Input
                       id={key}
                       value={tempProfile[key]}
-                      onChange={(e) => setTempProfile({ ...tempProfile, [key]: e.target.value })}
+                      onChange={(e) => setTempProfile({ ...tempProfile, [key]: key === "pan" ? e.target.value.toUpperCase() : e.target.value })}
                       className="h-10"
                     />
                   ) : (
-                    <div className="font-mono-tabular text-sm">{profile[key]}</div>
+                    <div className="font-mono-tabular text-sm">{profile[key] || "Not set"}</div>
                   )}
                 </div>
               ))}
+              <div className="space-y-1.5">
+                <Label htmlFor="riskLevel" className="text-xs uppercase tracking-wider text-muted-foreground">risk</Label>
+                {editing ? (
+                  <select
+                    id="riskLevel"
+                    value={tempProfile.riskLevel}
+                    onChange={(e) => setTempProfile({ ...tempProfile, riskLevel: e.target.value as SignupProfileInput["riskLevel"] })}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                ) : (
+                  <div className="font-mono-tabular text-sm">{profile.riskLevel}</div>
+                )}
+              </div>
             </div>
+            {profileError && <p className="mt-4 text-sm text-loss">{profileError}</p>}
 
             <div className="mt-6 flex gap-2">
               {editing ? (
                 <>
-                  <Button className="flex-1" onClick={() => { setProfile(tempProfile); setEditing(false); }}>Save</Button>
-                  <Button variant="outline" className="flex-1" onClick={() => { setTempProfile(profile); setEditing(false); }}>Cancel</Button>
+                  <Button className="flex-1" onClick={handleSaveProfile} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+                  <Button variant="outline" className="flex-1" onClick={() => { setTempProfile(profile); setEditing(false); }} disabled={saving}>Cancel</Button>
                 </>
               ) : (
                 <Button variant="outline" className="w-full" onClick={() => setEditing(true)}>
