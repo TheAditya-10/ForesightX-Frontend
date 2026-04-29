@@ -53,6 +53,7 @@ const StockDetail = () => {
     confidence: number;
     verdict: string;
   } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const stockName = stock?.name ?? ticker;
   const stockSector = stock?.sector ?? "Market";
@@ -63,6 +64,7 @@ const StockDetail = () => {
     if (!ticker) return;
     let mounted = true;
     (async () => {
+      setLoading(true);
       try {
         const [priceResponse, historyResponse, indicatorResponse, newsResponse] = await Promise.all([
           fetchPrice(ticker),
@@ -107,6 +109,8 @@ const StockDetail = () => {
         );
         setIndicators(getIndicators(ticker, fallback));
         setNews(getNewsForSymbol(ticker));
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
@@ -160,7 +164,32 @@ const StockDetail = () => {
       try {
         const payload = JSON.parse(event.data) as { type?: string; data?: { price?: number } };
         if (payload.type === "tick" && payload.data?.price && Number.isFinite(payload.data.price)) {
-          setLivePrice(payload.data.price);
+          const price = payload.data.price;
+          const ts = Date.now();
+          setLivePrice(price);
+          setHistory((prev) => {
+            const points = TIMEFRAMES.find((e) => e.id === tf)?.points ?? 60;
+            const totalMs =
+              tf === "1D"
+                ? 6.5 * 60 * 60 * 1000
+                : tf === "1W"
+                ? 7 * 24 * 60 * 60 * 1000
+                : tf === "1M"
+                ? 30 * 24 * 60 * 60 * 1000
+                : 365 * 24 * 60 * 60 * 1000;
+            const interval = totalMs / Math.max(1, points - 1);
+            if (prev.length === 0) return [{ timestamp: ts, price }];
+            const last = prev[prev.length - 1];
+            if (ts - last.timestamp < Math.max(1000, interval / 2)) {
+              const next = prev.slice();
+              next[next.length - 1] = { timestamp: ts, price };
+              return next;
+            } else {
+              const next = [...prev, { timestamp: ts, price }];
+              if (next.length > points) next.shift();
+              return next;
+            }
+          });
         }
       } catch {
         // Ignore malformed stream payloads.
@@ -169,7 +198,7 @@ const StockDetail = () => {
     return () => {
       socket.close();
     };
-  }, [ticker]);
+  }, [ticker, tf]);
 
   if (!ticker) {
     return (
@@ -295,43 +324,49 @@ const StockDetail = () => {
         </div>
 
         <div className="h-[360px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={usedSeries} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--chart-area))" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(var(--chart-area))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="hsl(var(--chart-grid))" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="timestamp"
-                type="number"
-                scale="time"
-                stroke="hsl(var(--muted-foreground))"
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                interval={Math.max(0, Math.floor(usedSeries.length / 8) - 1)}
-                domain={[xMin, xMax]}
-                tickFormatter={(val) => formatXLabel(Number(val))}
-              />
-              <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[min * 0.995, max * 1.005]} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
-              <Tooltip
-                labelFormatter={(val) => formatXLabel(Number(val))}
-                contentStyle={{
-                  background: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: 12,
-                  fontSize: 12,
-                  boxShadow: "var(--shadow-elegant)",
-                }}
-                labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                formatter={(v: number) => [`$${v.toFixed(2)}`, "Price"]}
-              />
-              <Area type="monotone" dataKey="price" stroke="hsl(var(--chart-line))" strokeWidth={2} fill="url(#areaFill)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="h-[360px] w-full p-6 flex items-center justify-center">
+              <Skeleton className="h-[320px] w-full rounded-xl" />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={usedSeries} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--chart-area))" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="hsl(var(--chart-area))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="hsl(var(--chart-grid))" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="timestamp"
+                  type="number"
+                  scale="time"
+                  stroke="hsl(var(--muted-foreground))"
+                  tick={{ fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={Math.max(0, Math.floor(usedSeries.length / 8) - 1)}
+                  domain={[xMin, xMax]}
+                  tickFormatter={(val) => formatXLabel(Number(val))}
+                />
+                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[min * 0.995, max * 1.005]} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
+                <Tooltip
+                  labelFormatter={(val) => formatXLabel(Number(val))}
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 12,
+                    fontSize: 12,
+                    boxShadow: "var(--shadow-elegant)",
+                  }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                  formatter={(v: number) => [`$${v.toFixed(2)}`, "Price"]}
+                />
+                <Area type="monotone" dataKey="price" stroke="hsl(var(--chart-line))" strokeWidth={2} fill="url(#areaFill)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -341,7 +376,14 @@ const StockDetail = () => {
             <Activity className="h-4 w-4 text-accent" /> Key indicators
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {indicators &&
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i}>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground"><Skeleton className="h-3 w-20" /></div>
+                  <div className="font-mono-tabular mt-1 text-base font-semibold"><Skeleton className="h-6 w-24" /></div>
+                </div>
+              ))
+            ) : indicators ? (
               [
                 { label: "RSI (14)", value: indicators.rsi.toFixed(1), tone: indicators.rsi > 70 ? "down" : indicators.rsi < 30 ? "up" : undefined },
                 { label: "MACD", value: indicators.macd.toFixed(2), tone: indicators.macd >= 0 ? "up" : "down" },
@@ -358,7 +400,8 @@ const StockDetail = () => {
                     {item.value}
                   </div>
                 </div>
-              ))}
+              ))
+            ) : null}
           </div>
         </div>
 
@@ -367,15 +410,29 @@ const StockDetail = () => {
             News related to <span className="font-mono text-foreground">{ticker}</span>
           </div>
           <div className="space-y-4">
-            {news.slice(0, 4).map((item) => (
-              <div key={item.id} className="border-b border-border/60 pb-4 last:border-0 last:pb-0">
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-accent">{item.tag}</span>
-                  <span className="text-muted-foreground">· {item.source} · {item.time}</span>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="border-b border-border/60 pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-32 ml-2" />
+                  </div>
+                  <div className="mt-2">
+                    <Skeleton className="h-5 w-full" />
+                  </div>
                 </div>
-                <h4 className="font-display mt-1.5 text-base font-medium leading-snug">{item.title}</h4>
-              </div>
-            ))}
+              ))
+            ) : (
+              news.slice(0, 4).map((item) => (
+                <div key={item.id} className="border-b border-border/60 pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-accent">{item.tag}</span>
+                    <span className="text-muted-foreground">· {item.source} · {item.time}</span>
+                  </div>
+                  <h4 className="font-display mt-1.5 text-base font-medium leading-snug">{item.title}</h4>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
