@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Search as SearchIcon, TrendingUp, TrendingDown } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { STOCKS } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 import { fetchPrice, searchInstruments } from "@/lib/platform-api";
@@ -11,15 +12,18 @@ const Search = () => {
   const [q, setQ] = useState("");
   const [livePrices, setLivePrices] = useState<Record<string, { price: number; change: number; changePct: number }>>({});
   const [remoteMatches, setRemoteMatches] = useState<Array<{ symbol: string; name: string; sector: string }>>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     const query = q.trim();
     if (!query) {
       setRemoteMatches([]);
+      setSearchLoading(false);
       return;
     }
     let mounted = true;
     const timer = window.setTimeout(async () => {
+      setSearchLoading(true);
       try {
         const results = await searchInstruments(query, 20);
         if (!mounted) return;
@@ -32,6 +36,8 @@ const Search = () => {
         );
       } catch {
         if (mounted) setRemoteMatches([]);
+      } finally {
+        if (mounted) setSearchLoading(false);
       }
     }, 250);
     return () => {
@@ -122,7 +128,25 @@ const Search = () => {
         </div>
 
         <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-elegant">
-          {filtered.length === 0 ? (
+          {q.trim() && searchLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between border-b border-border/60 px-5 py-4 last:border-0">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div>
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="mt-2 h-3 w-56" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Skeleton className="h-4 w-20 mx-auto" />
+                  <div className="mt-2">
+                    <Skeleton className="h-3 w-16 mx-auto" />
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : filtered.length === 0 ? (
             <div className="p-10 text-center text-sm text-muted-foreground">No matches found.</div>
           ) : (
             filtered.map((s) => {

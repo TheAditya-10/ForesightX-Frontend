@@ -4,11 +4,12 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { INITIAL_HOLDINGS } from "@/lib/mockData";
+import { type Holding } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { fetchPortfolio, fetchRisk, fetchUserProfile, updateUserProfile, type SignupProfileInput } from "@/lib/platform-api";
+import { fetchPortfolio, fetchRisk, fetchUserProfile, updateUserProfile, uploadUserProfilePhoto, type SignupProfileInput } from "@/lib/platform-api";
 import { getUserId, loadSession } from "@/lib/session";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const emptyProfile: SignupProfileInput = {
   name: "",
@@ -29,14 +30,17 @@ const Profile = () => {
   const [tempProfile, setTempProfile] = useState(profile);
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
-  const [holdings, setHoldings] = useState(INITIAL_HOLDINGS);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
   const [riskLevel, setRiskLevel] = useState("moderate");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const userId = getUserId();
     let mounted = true;
     (async () => {
+      setLoading(true);
       try {
         const [userProfile, portfolio, risk] = await Promise.all([
           fetchUserProfile(userId),
@@ -67,6 +71,8 @@ const Profile = () => {
         setRiskLevel(risk.risk_level);
       } catch (err) {
         if (mounted) setProfileError(err instanceof Error ? err.message : "Could not load profile");
+      } finally {
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
@@ -82,16 +88,28 @@ const Profile = () => {
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setTempProfile({ ...tempProfile, photo: reader.result as string });
-    reader.readAsDataURL(file);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setProfileError("Use a JPEG, PNG, or WebP profile photo");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setProfileError("Profile photo must be 2 MB or smaller");
+      return;
+    }
+    setPhotoFile(file);
+    setProfileError(null);
+    setTempProfile({ ...tempProfile, photo: URL.createObjectURL(file) });
   };
 
   const handleSaveProfile = async () => {
     setSaving(true);
     setProfileError(null);
     try {
-      const saved = await updateUserProfile(getUserId(), tempProfile);
+      const userId = getUserId();
+      let saved = await updateUserProfile(userId, { ...tempProfile, photo: profile.photo });
+      if (photoFile) {
+        saved = await uploadUserProfilePhoto(userId, photoFile);
+      }
       const nextProfile: SignupProfileInput = {
         name: saved.name,
         email: saved.email,
@@ -103,6 +121,7 @@ const Profile = () => {
       };
       setProfile(nextProfile);
       setTempProfile(nextProfile);
+      setPhotoFile(null);
       setRiskLevel(saved.riskLevel);
       setEditing(false);
     } catch (err) {
@@ -119,64 +138,92 @@ const Profile = () => {
         <section className="lg:col-span-1">
           <div className="rounded-2xl border border-border bg-card p-6 shadow-elegant">
             <div className="flex flex-col items-center text-center">
-              <div className="relative">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-border bg-gradient-accent">
-                  {(editing ? tempProfile.photo : profile.photo) ? (
-                    <img src={editing ? tempProfile.photo : profile.photo} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center font-display text-3xl font-semibold text-accent-foreground">
-                      {(profile.name || "FX").split(" ").map(n => n[0]).join("").slice(0, 2)}
-                    </div>
-                  )}
+              {loading ? (
+                <div className="w-full">
+                  <div className="relative">
+                    <Skeleton className="h-28 w-28 rounded-full mx-auto" />
+                  </div>
+                  <div className="mt-4">
+                    <Skeleton className="h-6 w-40 mx-auto" />
+                    <Skeleton className="mt-2 h-4 w-56 mx-auto" />
+                  </div>
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs uppercase justify-center">
+                    <Skeleton className="h-3 w-20" />
+                  </div>
                 </div>
-                {editing && (
-                  <label className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-glow">
-                    <Camera className="h-4 w-4" />
-                    <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-                  </label>
-                )}
-              </div>
-              <h2 className="font-display mt-4 text-xl font-semibold">{profile.name || "Your profile"}</h2>
-              <p className="text-sm text-muted-foreground">{profile.email}</p>
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs uppercase">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" /> Verified Trader
-                <span className="text-muted-foreground">· {riskLevel}</span>
-              </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <div className="h-28 w-28 overflow-hidden rounded-full border-2 border-border bg-gradient-accent">
+                      {(editing ? tempProfile.photo : profile.photo) ? (
+                        <img src={editing ? tempProfile.photo : profile.photo} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center font-display text-3xl font-semibold text-accent-foreground">
+                          {(profile.name || "FX").split(" ").map(n => n[0]).join("").slice(0, 2)}
+                        </div>
+                      )}
+                    </div>
+                    {editing && (
+                      <label className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-foreground shadow-glow">
+                        <Camera className="h-4 w-4" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+                      </label>
+                    )}
+                  </div>
+                  <h2 className="font-display mt-4 text-xl font-semibold">{profile.name || "Your profile"}</h2>
+                  <p className="text-sm text-muted-foreground">{profile.email}</p>
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs uppercase">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success" /> Verified Trader
+                    <span className="text-muted-foreground">· {riskLevel}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-8 space-y-4">
-              {(["name", "email", "phone", "pan", "city"] as const).map((key) => (
-                <div key={key} className="space-y-1.5">
-                  <Label htmlFor={key} className="text-xs uppercase tracking-wider text-muted-foreground">{key}</Label>
-                  {editing ? (
-                    <Input
-                      id={key}
-                      value={tempProfile[key]}
-                      onChange={(e) => setTempProfile({ ...tempProfile, [key]: key === "pan" ? e.target.value.toUpperCase() : e.target.value })}
-                      className="h-10"
-                    />
-                  ) : (
-                    <div className="font-mono-tabular text-sm">{profile[key] || "Not set"}</div>
-                  )}
-                </div>
-              ))}
-              <div className="space-y-1.5">
-                <Label htmlFor="riskLevel" className="text-xs uppercase tracking-wider text-muted-foreground">risk</Label>
-                {editing ? (
-                  <select
-                    id="riskLevel"
-                    value={tempProfile.riskLevel}
-                    onChange={(e) => setTempProfile({ ...tempProfile, riskLevel: e.target.value as SignupProfileInput["riskLevel"] })}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                ) : (
-                  <div className="font-mono-tabular text-sm">{profile.riskLevel}</div>
-                )}
-              </div>
+              {loading ? (
+                <>
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </>
+              ) : (
+                <>
+                  {(["name", "email", "phone", "pan", "city"] as const).map((key) => (
+                    <div key={key} className="space-y-1.5">
+                      <Label htmlFor={key} className="text-xs uppercase tracking-wider text-muted-foreground">{key}</Label>
+                      {editing ? (
+                        <Input
+                          id={key}
+                          value={tempProfile[key]}
+                          onChange={(e) => setTempProfile({ ...tempProfile, [key]: key === "pan" ? e.target.value.toUpperCase() : e.target.value })}
+                          className="h-10"
+                        />
+                      ) : (
+                        <div className="font-mono-tabular text-sm">{profile[key] || "Not set"}</div>
+                      )}
+                    </div>
+                  ))}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="riskLevel" className="text-xs uppercase tracking-wider text-muted-foreground">risk</Label>
+                    {editing ? (
+                      <select
+                        id="riskLevel"
+                        value={tempProfile.riskLevel}
+                        onChange={(e) => setTempProfile({ ...tempProfile, riskLevel: e.target.value as SignupProfileInput["riskLevel"] })}
+                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    ) : (
+                      <div className="font-mono-tabular text-sm">{profile.riskLevel}</div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             {profileError && <p className="mt-4 text-sm text-loss">{profileError}</p>}
 
@@ -184,10 +231,10 @@ const Profile = () => {
               {editing ? (
                 <>
                   <Button className="flex-1" onClick={handleSaveProfile} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-                  <Button variant="outline" className="flex-1" onClick={() => { setTempProfile(profile); setEditing(false); }} disabled={saving}>Cancel</Button>
+                  <Button variant="outline" className="flex-1" onClick={() => { setTempProfile(profile); setPhotoFile(null); setEditing(false); }} disabled={saving}>Cancel</Button>
                 </>
               ) : (
-                <Button variant="outline" className="w-full" onClick={() => setEditing(true)}>
+                <Button variant="outline" className="w-full" onClick={() => setEditing(true)} disabled={loading}>
                   <Edit3 className="mr-2 h-4 w-4" /> Edit personal details
                 </Button>
               )}
@@ -198,15 +245,34 @@ const Profile = () => {
         {/* Portfolio */}
         <section className="space-y-6 lg:col-span-2">
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Portfolio value" value={`$${current.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} icon={Wallet} />
-            <StatCard label="Total invested" value={`$${invested.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} icon={PieChart} />
-            <StatCard
-              label="Today's P&L"
-              value={`${pnl >= 0 ? "+" : ""}$${pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-              sub={`${pnl >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`}
-              icon={pnl >= 0 ? TrendingUp : TrendingDown}
-              tone={pnl >= 0 ? "up" : "down"}
-            />
+            {loading ? (
+              <>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-elegant">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="mt-3 h-8 w-full" />
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-elegant">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="mt-3 h-8 w-full" />
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-elegant">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="mt-3 h-8 w-full" />
+                </div>
+              </>
+            ) : (
+              <>
+                <StatCard label="Portfolio value" value={`$${current.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} icon={Wallet} />
+                <StatCard label="Total invested" value={`$${invested.toLocaleString(undefined, { maximumFractionDigits: 2 })}`} icon={PieChart} />
+                <StatCard
+                  label="Today's P&L"
+                  value={`${pnl >= 0 ? "+" : ""}$${pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                  sub={`${pnl >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%`}
+                  icon={pnl >= 0 ? TrendingUp : TrendingDown}
+                  tone={pnl >= 0 ? "up" : "down"}
+                />
+              </>
+            )}
           </div>
 
           <div className="rounded-2xl border border-border bg-card shadow-elegant">
@@ -230,30 +296,50 @@ const Profile = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {holdings.map((h) => {
-                    const value = h.qty * h.price;
-                    const cost = h.qty * h.avgPrice;
-                    const p = value - cost;
-                    const pp = (p / cost) * 100;
-                    const up = p >= 0;
-                    return (
-                      <tr key={h.symbol} className="border-b border-border/60 last:border-0 hover:bg-secondary/40 transition-colors">
+                  {loading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <tr key={i} className="border-b border-border/60 last:border-0">
                         <td className="px-5 py-4">
-                          <Link to={`/dashboard/stock/${h.symbol}`} className="block">
-                            <div className="font-mono text-sm font-semibold">{h.symbol}</div>
-                            <div className="text-xs text-muted-foreground">{h.name}</div>
-                          </Link>
+                          <div className="flex items-center gap-4">
+                            <Skeleton className="h-10 w-10 rounded-lg" />
+                            <div>
+                              <Skeleton className="h-4 w-28" />
+                              <Skeleton className="mt-2 h-3 w-40" />
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-5 py-4 text-right font-mono-tabular">{h.qty}</td>
-                        <td className="px-5 py-4 text-right font-mono-tabular text-muted-foreground">${h.avgPrice.toFixed(2)}</td>
-                        <td className="px-5 py-4 text-right font-mono-tabular">${h.price.toFixed(2)}</td>
-                        <td className={cn("px-5 py-4 text-right font-mono-tabular", up ? "text-success" : "text-loss")}>
-                          <div>{up ? "+" : ""}${p.toFixed(2)}</div>
-                          <div className="text-xs">{up ? "+" : ""}{pp.toFixed(2)}%</div>
-                        </td>
+                        <td className="px-5 py-4 text-right font-mono-tabular"><Skeleton className="h-4 w-10 mx-auto" /></td>
+                        <td className="px-5 py-4 text-right font-mono-tabular text-muted-foreground"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                        <td className="px-5 py-4 text-right font-mono-tabular"><Skeleton className="h-4 w-16 mx-auto" /></td>
+                        <td className="px-5 py-4 text-right font-mono-tabular"><Skeleton className="h-4 w-20 mx-auto" /></td>
                       </tr>
-                    );
-                  })}
+                    ))
+                  ) : (
+                    holdings.map((h) => {
+                      const value = h.qty * h.price;
+                      const cost = h.qty * h.avgPrice;
+                      const p = value - cost;
+                      const pp = (p / cost) * 100;
+                      const up = p >= 0;
+                      return (
+                        <tr key={h.symbol} className="border-b border-border/60 last:border-0 hover:bg-secondary/40 transition-colors">
+                          <td className="px-5 py-4">
+                            <Link to={`/dashboard/stock/${h.symbol}`} className="block">
+                              <div className="font-mono text-sm font-semibold">{h.symbol}</div>
+                              <div className="text-xs text-muted-foreground">{h.name}</div>
+                            </Link>
+                          </td>
+                          <td className="px-5 py-4 text-right font-mono-tabular">{h.qty}</td>
+                          <td className="px-5 py-4 text-right font-mono-tabular text-muted-foreground">${h.avgPrice.toFixed(2)}</td>
+                          <td className="px-5 py-4 text-right font-mono-tabular">${h.price.toFixed(2)}</td>
+                          <td className={cn("px-5 py-4 text-right font-mono-tabular", up ? "text-success" : "text-loss")}>
+                            <div>{up ? "+" : ""}${p.toFixed(2)}</div>
+                            <div className="text-xs">{up ? "+" : ""}{pp.toFixed(2)}%</div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

@@ -4,6 +4,7 @@ import { ArrowLeft, Sparkles, TrendingUp, TrendingDown, Activity, BarChart3, Plu
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { STOCKS, generateSeries, getIndicators, getNewsForSymbol, predictStock, type Timeframe } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,8 @@ const StockDetail = () => {
   const [seekOpen, setSeekOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [livePrice, setLivePrice] = useState<number | null>(null);
-  const [history, setHistory] = useState<Array<{ t: string; price: number }>>([]);
+  type SeriesPoint = { timestamp: number; price: number };
+  const [history, setHistory] = useState<SeriesPoint[]>([]);
   const [indicators, setIndicators] = useState<ReturnType<typeof getIndicators> | null>(null);
   const [news, setNews] = useState(getNewsForSymbol(ticker || symbol));
   const [isSeekLoading, setIsSeekLoading] = useState(false);
@@ -72,7 +74,7 @@ const StockDetail = () => {
         setLivePrice(priceResponse.price);
         setHistory(
           historyResponse.map((point) => ({
-            t: new Date(point.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            timestamp: new Date(point.timestamp).getTime(),
             price: point.close,
           }))
         );
@@ -89,7 +91,20 @@ const StockDetail = () => {
         setNews(newsResponse);
       } catch {
         const fallback = stock?.price || 100;
-        setHistory(generateSeries(ticker, fallback, tf));
+        const gen = generateSeries(ticker, fallback, tf);
+        const now = Date.now();
+        const totalMs =
+          tf === "1D"
+            ? 6.5 * 60 * 60 * 1000
+            : tf === "1W"
+            ? 7 * 24 * 60 * 60 * 1000
+            : tf === "1M"
+            ? 30 * 24 * 60 * 60 * 1000
+            : 365 * 24 * 60 * 60 * 1000;
+        const interval = totalMs / Math.max(1, gen.length - 1);
+        setHistory(
+          gen.map((p, i) => ({ timestamp: Math.round(now - (gen.length - 1 - i) * interval), price: p.price }))
+        );
         setIndicators(getIndicators(ticker, fallback));
         setNews(getNewsForSymbol(ticker));
       }
@@ -169,11 +184,45 @@ const StockDetail = () => {
     );
   }
 
-  const series = history.length > 0 ? history : generateSeries(ticker, currentPrice || stock?.price || 100, tf);
-  const min = Math.min(...series.map((d) => d.price));
-  const max = Math.max(...series.map((d) => d.price));
-  const refPrice = stock?.price ?? (series.length > 0 ? series[0].price : currentPrice || 1);
+  const series = (() => {
+    if (history.length > 0) return history;
+    const gen = generateSeries(ticker, currentPrice || stock?.price || 100, tf);
+    const now = Date.now();
+    const totalMs =
+      tf === "1D"
+        ? 6.5 * 60 * 60 * 1000
+        : tf === "1W"
+        ? 7 * 24 * 60 * 60 * 1000
+        : tf === "1M"
+        ? 30 * 24 * 60 * 60 * 1000
+        : 365 * 24 * 60 * 60 * 1000;
+    const interval = totalMs / Math.max(1, gen.length - 1);
+    return gen.map((p, i) => ({ timestamp: Math.round(now - (gen.length - 1 - i) * interval), price: p.price }));
+  })();
+
+  // Remove any points that are in the future to avoid the chart extending past real time.
+  const now = Date.now();
+  const displaySeries = series.filter((p) => Number.isFinite(p.timestamp) && p.timestamp <= now);
+  const usedSeries = (displaySeries.length > 0 ? displaySeries : series.filter((p) => Number.isFinite(p.timestamp))).slice();
+  usedSeries.sort((a, b) => a.timestamp - b.timestamp);
+
+  const min = Math.min(...usedSeries.map((d) => d.price));
+  const max = Math.max(...usedSeries.map((d) => d.price));
+  const refPrice = stock?.price ?? (usedSeries.length > 0 ? usedSeries[0].price : currentPrice || 1);
   const up = currentPrice >= refPrice;
+  const xMin = Math.min(...usedSeries.map((d) => d.timestamp));
+  const xMax = Math.max(...usedSeries.map((d) => d.timestamp));
+
+  const formatXLabel = (val: number | string) => {
+    const ts = typeof val === "number" ? val : Number(val);
+    if (!Number.isFinite(ts)) return String(val);
+    const d = new Date(ts);
+    if (tf === "1D") return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (tf === "1W") return d.toLocaleDateString([], { weekday: "short" });
+    if (tf === "1M") return d.toLocaleDateString([], { day: "numeric", month: "short" });
+    if (tf === "1Y") return d.toLocaleDateString([], { month: "short" });
+    return d.toLocaleString();
+  };
 
   const handleBuy = async () => {
     try {
@@ -247,7 +296,7 @@ const StockDetail = () => {
 
         <div className="h-[360px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={series} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+            <AreaChart data={usedSeries} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(var(--chart-area))" stopOpacity={0.35} />
@@ -255,9 +304,21 @@ const StockDetail = () => {
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="hsl(var(--chart-grid))" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="t" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(series.length / 8) - 1)} />
+              <XAxis
+                dataKey="timestamp"
+                type="number"
+                scale="time"
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                interval={Math.max(0, Math.floor(usedSeries.length / 8) - 1)}
+                domain={[xMin, xMax]}
+                tickFormatter={(val) => formatXLabel(Number(val))}
+              />
               <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[min * 0.995, max * 1.005]} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
               <Tooltip
+                labelFormatter={(val) => formatXLabel(Number(val))}
                 contentStyle={{
                   background: "hsl(var(--popover))",
                   border: "1px solid hsl(var(--border))",

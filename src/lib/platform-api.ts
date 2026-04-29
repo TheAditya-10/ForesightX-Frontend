@@ -71,10 +71,11 @@ export type UserProfile = {
   pan: string;
   city: string;
   photo: string;
+  photoKey: string;
   riskLevel: "low" | "medium" | "high";
 };
 
-export type SignupProfileInput = Omit<UserProfile, "userId">;
+export type SignupProfileInput = Omit<UserProfile, "userId" | "photoKey">;
 
 async function request<T>(path: string, method: HttpMethod = "GET", body?: unknown): Promise<T> {
   const headers: Record<string, string> = {
@@ -96,6 +97,20 @@ async function request<T>(path: string, method: HttpMethod = "GET", body?: unkno
   return (await response.json()) as T;
 }
 
+async function requestForm<T>(path: string, method: HttpMethod, body: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  const session = loadSession();
+  if (session?.accessToken) {
+    headers.Authorization = `Bearer ${session.accessToken}`;
+  }
+  const response = await fetch(path, { method, headers, body });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as T;
+}
+
 export async function register(email: string, password: string, profile: SignupProfileInput) {
   return request<{
     user: { id: string; email: string; role: string };
@@ -107,7 +122,7 @@ export async function register(email: string, password: string, profile: SignupP
     phone: profile.phone,
     pan: profile.pan,
     city: profile.city,
-    photo: profile.photo || null,
+    photo: null,
     risk_level: profile.riskLevel,
   });
 }
@@ -143,6 +158,7 @@ function mapProfile(raw: {
   pan?: string | null;
   city?: string | null;
   photo?: string | null;
+  photo_key?: string | null;
   risk_level: string;
 }): UserProfile {
   return {
@@ -153,6 +169,7 @@ function mapProfile(raw: {
     pan: raw.pan || "",
     city: raw.city || "",
     photo: raw.photo || "",
+    photoKey: raw.photo_key || "",
     riskLevel: (raw.risk_level || "medium") as UserProfile["riskLevel"],
   };
 }
@@ -166,6 +183,7 @@ export async function fetchUserProfile(userId: string) {
     pan?: string | null;
     city?: string | null;
     photo?: string | null;
+    photo_key?: string | null;
     risk_level: string;
   }>(`/api/profile/profiles/${encodeURIComponent(userId)}`);
   return mapProfile(raw);
@@ -180,6 +198,7 @@ export async function updateUserProfile(userId: string, profile: SignupProfileIn
     pan?: string | null;
     city?: string | null;
     photo?: string | null;
+    photo_key?: string | null;
     risk_level: string;
   }>(`/api/profile/profiles/${encodeURIComponent(userId)}`, "PATCH", {
     name: profile.name,
@@ -187,9 +206,25 @@ export async function updateUserProfile(userId: string, profile: SignupProfileIn
     phone: profile.phone,
     pan: profile.pan,
     city: profile.city,
-    photo: profile.photo || null,
     risk_level: profile.riskLevel,
   });
+  return mapProfile(raw);
+}
+
+export async function uploadUserProfilePhoto(userId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const raw = await requestForm<{
+    user_id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    pan?: string | null;
+    city?: string | null;
+    photo?: string | null;
+    photo_key?: string | null;
+    risk_level: string;
+  }>(`/api/profile/profiles/${encodeURIComponent(userId)}/photo`, "POST", form);
   return mapProfile(raw);
 }
 
@@ -247,6 +282,7 @@ export async function fetchPortfolio(userId: string) {
     pan?: string | null;
     city?: string | null;
     photo?: string | null;
+    photo_key?: string | null;
     risk_level: string;
     cash: number;
     holdings: Array<{ ticker: string; quantity: number; avg_price: number; current_price: number }>;
@@ -262,6 +298,7 @@ export async function fetchPortfolio(userId: string) {
       pan: raw.pan,
       city: raw.city,
       photo: raw.photo,
+      photo_key: raw.photo_key,
       risk_level: raw.risk_level,
     }),
     riskLevel: raw.risk_level,
