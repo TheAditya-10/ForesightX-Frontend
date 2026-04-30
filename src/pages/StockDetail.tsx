@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, TrendingUp, TrendingDown, Activity, BarChart3, Plus, Minus } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -118,43 +118,45 @@ const StockDetail = () => {
     };
   }, [ticker, tf, stock?.price]);
 
-  useEffect(() => {
+  // Fetch seek prediction and orchestration recommendation when the dialog is opened.
+  const fetchSeekPrediction = async (signal?: AbortSignal) => {
     if (!ticker) return;
-    let mounted = true;
-    (async () => {
-      setIsSeekLoading(true);
-      try {
-        const [patternResponse, recommendationResponse] = await Promise.all([
-          fetchPrediction(ticker),
-          fetchTradeRecommendation(getUserId(), ticker),
-        ]);
-        if (!mounted) return;
-        const [h1, d1, d2] = patternResponse.predictions;
-        const referencePrice = livePrice ?? stock?.price ?? h1;
-        const trend = d2 >= referencePrice ? "bullish" : "bearish";
-        setPrediction({
-          nextHour: h1,
-          nextHourErr: Math.abs(patternResponse.intervals[0][1] - patternResponse.intervals[0][0]) / 2,
-          nextDay: d1,
-          nextDayErr: Math.abs(patternResponse.intervals[1][1] - patternResponse.intervals[1][0]) / 2,
-          dayAfter: d2,
-          dayAfterErr: Math.abs(patternResponse.intervals[2][1] - patternResponse.intervals[2][0]) / 2,
-          trend,
-          confidence: Math.round(recommendationResponse.confidence * 100),
-          verdict: recommendationResponse.recommendation,
-        });
-      } catch {
-        setPrediction(predictStock(ticker, currentPrice || stock?.price || 100));
-      } finally {
-        if (mounted) {
-          setIsSeekLoading(false);
-        }
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [ticker]);
+    setIsSeekLoading(true);
+    try {
+      const [patternResponse, recommendationResponse] = await Promise.all([
+        fetchPrediction(ticker),
+        fetchTradeRecommendation(getUserId(), ticker),
+      ]);
+      if (signal?.aborted) return;
+      const [h1, d1, d2] = patternResponse.predictions;
+      const referencePrice = livePrice ?? stock?.price ?? h1;
+      const trend = d2 >= referencePrice ? "bullish" : "bearish";
+      setPrediction({
+        nextHour: h1,
+        nextHourErr: Math.abs(patternResponse.intervals[0][1] - patternResponse.intervals[0][0]) / 2,
+        nextDay: d1,
+        nextDayErr: Math.abs(patternResponse.intervals[1][1] - patternResponse.intervals[1][0]) / 2,
+        dayAfter: d2,
+        dayAfterErr: Math.abs(patternResponse.intervals[2][1] - patternResponse.intervals[2][0]) / 2,
+        trend,
+        confidence: Math.round(recommendationResponse.confidence * 100),
+        verdict: recommendationResponse.recommendation,
+      });
+    } catch (err) {
+      if ((err as any)?.name === "AbortError") return;
+      setPrediction(predictStock(ticker, currentPrice || stock?.price || 100));
+    } finally {
+      setIsSeekLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!seekOpen) return;
+    const controller = new AbortController();
+    fetchSeekPrediction(controller.signal);
+    return () => controller.abort();
+    // only re-run when dialog opens/closes or ticker changes
+  }, [seekOpen, ticker]);
 
   useEffect(() => {
     if (!ticker) return;
@@ -253,6 +255,86 @@ const StockDetail = () => {
     return d.toLocaleString();
   };
 
+  // Compute explicit tick positions for the X axis so labels for Today/1W are equidistant
+  const ticks = useMemo(() => {
+    if (!usedSeries || usedSeries.length === 0) return [] as number[];
+    const minTs = xMin;
+    const maxTs = xMax;
+    if (!Number.isFinite(minTs) || !Number.isFinite(maxTs) || maxTs <= minTs) return [minTs];
+
+    const range = maxTs - minTs;
+    const desired = tf === "1D" ? 6 : tf === "1W" ? 7 : tf === "1M" ? 6 : 12;
+
+    const hour = 60 * 60 * 1000;
+    const day = 24 * 60 * 60 * 1000;
+
+    // Today: produce hour-aligned ticks between min and max, sampled to at most `desired` labels
+    if (tf === "1D") {
+      const start = new Date(minTs);
+      start.setMinutes(0, 0, 0);
+      const end = new Date(maxTs);
+      end.setMinutes(0, 0, 0);
+      const totalHours = Math.max(1, Math.round((end.getTime() - start.getTime()) / hour) + 1);
+      if (totalHours <= desired) {
+        const out: number[] = [];
+        for (let t = start.getTime(); t <= end.getTime(); t += hour) out.push(t);
+        return out.filter((t) => t >= minTs && t <= maxTs);
+      }
+      const stepHours = Math.ceil(totalHours / desired);
+      const out: number[] = [];
+      for (let t = start.getTime(); t <= end.getTime(); t += stepHours * hour) out.push(t);
+      if (out[out.length - 1] < end.getTime()) out.push(end.getTime());
+      return out.filter((t) => t >= minTs && t <= maxTs);
+    }
+
+    // Week: produce day-aligned ticks across the 7-day range
+    if (tf === "1W") {
+      const start = new Date(minTs);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(maxTs);
+      end.setHours(0, 0, 0, 0);
+      const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / day) + 1);
+      if (totalDays <= desired) {
+        const out: number[] = [];
+        for (let t = start.getTime(); t <= end.getTime(); t += day) out.push(t);
+        return out.filter((t) => t >= minTs && t <= maxTs);
+      }
+      const stepDays = Math.ceil(totalDays / desired);
+      const out: number[] = [];
+      for (let t = start.getTime(); t <= end.getTime(); t += stepDays * day) out.push(t);
+      if (out[out.length - 1] < end.getTime()) out.push(end.getTime());
+      return out.filter((t) => t >= minTs && t <= maxTs);
+    }
+
+    // Month: sample by day (approx every 5 days) rounded down to day boundary
+    if (tf === "1M") {
+      const start = new Date(minTs);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(maxTs);
+      end.setHours(0, 0, 0, 0);
+      const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / day) + 1);
+      const stepDays = Math.max(1, Math.ceil(totalDays / desired));
+      const out: number[] = [];
+      for (let t = start.getTime(); t <= end.getTime(); t += stepDays * day) out.push(t);
+      if (out[out.length - 1] < end.getTime()) out.push(end.getTime());
+      return out.filter((t) => t >= minTs && t <= maxTs);
+    }
+
+    // Year: month starts
+    const months: number[] = [];
+    const startMonth = new Date(minTs);
+    startMonth.setDate(1);
+    startMonth.setHours(0, 0, 0, 0);
+    const monthStep = Math.max(1, Math.round(12 / desired));
+    for (let d = new Date(startMonth); d.getTime() <= maxTs; d.setMonth(d.getMonth() + monthStep)) {
+      months.push(d.getTime());
+    }
+    if (months.length === 0) return [minTs, maxTs];
+    if (months[0] > minTs) months.unshift(minTs);
+    if (months[months.length - 1] < maxTs) months.push(maxTs);
+    return months.filter((t) => t >= minTs && t <= maxTs);
+  }, [usedSeries, tf, xMin, xMax]);
+
   const handleBuy = async () => {
     try {
       await updatePortfolioPosition(getUserId(), ticker, qty);
@@ -307,19 +389,27 @@ const StockDetail = () => {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <BarChart3 className="h-4 w-4 text-accent" /> Price chart
           </div>
-          <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/50 p-1">
-            {TIMEFRAMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTf(t.id)}
-                className={cn(
-                  "rounded-full px-4 py-1.5 text-xs font-medium transition-all",
-                  tf === t.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            {tf === "1D" && (
+              <div className="text-xs text-muted-foreground">
+                Today · {new Date().toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/50 p-1">
+              {TIMEFRAMES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTf(t.id)}
+                  className={cn(
+                    "rounded-full px-4 py-1.5 text-xs font-medium transition-all",
+                    tf === t.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -346,8 +436,8 @@ const StockDetail = () => {
                   tick={{ fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
-                  interval={Math.max(0, Math.floor(usedSeries.length / 8) - 1)}
                   domain={[xMin, xMax]}
+                  ticks={ticks}
                   tickFormatter={(val) => formatXLabel(Number(val))}
                 />
                 <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[min * 0.995, max * 1.005]} tickFormatter={(v) => `$${Number(v).toFixed(0)}`} />
@@ -455,7 +545,21 @@ const StockDetail = () => {
               </DialogHeader>
 
               <div className="mt-5 grid grid-cols-3 gap-3">
-                {prediction &&
+                {isSeekLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                      <div className="font-mono-tabular mt-1 text-base font-semibold">
+                        <Skeleton className="h-6 w-24" />
+                      </div>
+                      <div className="font-mono-tabular text-xs text-muted-foreground">
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                  ))
+                ) : prediction ? (
                   [
                     { label: "Next hour", value: prediction.nextHour, err: prediction.nextHourErr },
                     { label: "Next day", value: prediction.nextDay, err: prediction.nextDayErr },
@@ -466,31 +570,64 @@ const StockDetail = () => {
                       <div className="font-mono-tabular mt-1 text-base font-semibold">${item.value.toFixed(2)}</div>
                       <div className="font-mono-tabular text-xs text-muted-foreground">± ${item.err.toFixed(2)}</div>
                     </div>
-                  ))}
+                  ))
+                ) : null}
               </div>
 
-              {prediction && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Confidence</div>
-                    <div className="font-mono-tabular mt-1 text-base font-semibold">{prediction.confidence}%</div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full rounded-full bg-accent" style={{ width: `${prediction.confidence}%` }} />
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {isSeekLoading ? (
+                  <>
+                    <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                      <div className="font-mono-tabular mt-1 text-base font-semibold">
+                        <Skeleton className="h-6 w-20" />
+                      </div>
+                      <div className="mt-2">
+                        <Skeleton className="h-3 w-full" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Trend</div>
-                    <div className={cn("mt-1 inline-flex items-center gap-1.5 text-base font-semibold capitalize", prediction.trend === "bullish" ? "text-success" : "text-loss")}>
-                      {prediction.trend === "bullish" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                      {prediction.trend}
+                    <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                      <div className="mt-1">
+                        <Skeleton className="h-5 w-24" />
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  </>
+                ) : prediction ? (
+                  <>
+                    <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Confidence</div>
+                      <div className="font-mono-tabular mt-1 text-base font-semibold">{prediction.confidence}%</div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                        <div className="h-full rounded-full bg-accent" style={{ width: `${prediction.confidence}%` }} />
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Trend</div>
+                      <div className={cn("mt-1 inline-flex items-center gap-1.5 text-base font-semibold capitalize", prediction.trend === "bullish" ? "text-success" : "text-loss")}>
+                        {prediction.trend === "bullish" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                        {prediction.trend}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </div>
 
               <div className={cn("mt-5 rounded-xl border p-4 text-sm", prediction?.trend === "bullish" ? "border-success/30 bg-success/5" : "border-loss/30 bg-loss/5")}>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Verdict</div>
-                <p className="mt-1 leading-relaxed">{prediction?.verdict}</p>
+                {isSeekLoading ? (
+                  <div className="mt-2 space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ) : (
+                  <p className="mt-1 leading-relaxed">{prediction?.verdict}</p>
+                )}
               </div>
 
               <div className="mt-5 rounded-xl border border-border bg-card/80 p-4">

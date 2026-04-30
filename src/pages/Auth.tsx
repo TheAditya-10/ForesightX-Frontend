@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -42,6 +42,25 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
   const [riskLevel, setRiskLevel] = useState<SignupProfileInput["riskLevel"]>("medium");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Avatar pool (randomized on first render)
+  const AVATARS = [
+    "/illustrations/avatars/avatar-1.svg",
+    "/illustrations/avatars/avatar-2.svg",
+    "/illustrations/avatars/avatar-3.svg",
+    "/illustrations/avatars/avatar-4.svg",
+    "/illustrations/avatars/avatar-5.svg",
+    "/illustrations/avatars/avatar-6.svg",
+  ];
+
+  const avatars = useMemo(() => {
+    const pool = AVATARS.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, 4);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +117,22 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
       <div className="relative hidden overflow-hidden border-r border-border bg-surface lg:block">
         <div className="absolute inset-0 bg-hero-glow" />
         <div className="absolute inset-0 grid-bg opacity-30 [mask-image:radial-gradient(ellipse_60%_60%_at_30%_40%,#000_20%,transparent_75%)]" />
-        <div className="relative flex h-full flex-col justify-between p-10">
+
+        {/* Decorative illustration - centered and responsive for light/dark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <img
+            src="/illustrations/hero-light.svg"
+            alt="ForeSightX illustration"
+            className="block dark:hidden lg:block max-w-[520px] w-full px-8 opacity-95"
+          />
+          <img
+            src="/illustrations/hero-dark.svg"
+            alt="ForeSightX illustration"
+            className="hidden dark:block lg:block max-w-[520px] w-full px-8 opacity-95"
+          />
+        </div>
+
+        <div className="relative z-10 flex h-full flex-col justify-between p-10">
           <Link to="/"><Logo /></Link>
           <div>
             <h2 className="font-display text-4xl font-semibold leading-tight tracking-tight">
@@ -111,8 +145,8 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
             </p>
             <div className="mt-10 flex items-center gap-3">
               <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-gradient-accent" />
+                {avatars.map((src, i) => (
+                  <img key={i} src={src} alt={`Trader avatar ${i + 1}`} className="h-8 w-8 rounded-full border-2 border-background object-cover" />
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">Trusted by 24k+ traders</p>

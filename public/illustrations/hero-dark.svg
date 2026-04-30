@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="560" viewBox="0 0 800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#04373F" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#012022" stop-opacity="0.6" />
+    </linearGradient>
+    <linearGradient id="g2" x1="0" x2="1">
+      <stop offset="0%" stop-color="#2EE6B3"/>
+      <stop offset="100%" stop-color="#17C3A2"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="560" rx="20" fill="url(#g1)" />
+  <g opacity="0.12">
+    <rect x="40" y="40" width="720" height="480" rx="14" fill="#000" />
+  </g>
+  <!-- stylized chart area -->
+  <g transform="translate(60,120)">
+    <rect width="680" height="320" rx="12" fill="rgba(0,0,0,0.12)" />
+    <path d="M0 220 C60 200 120 180 180 200 C240 220 300 240 360 180 C420 110 480 140 540 120 C600 100 660 160 680 140" fill="none" stroke="url(#g2)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="680" cy="140" r="6" fill="#17C3A2" />
+  </g>
+</svg>
