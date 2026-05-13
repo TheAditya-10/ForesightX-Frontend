@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, Brain, ShieldCheck, Zap, LineChart, Newspaper } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, ShieldCheck, Zap, LineChart, Newspaper, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { STOCKS } from "@/lib/mockData";
+
+const documentationUrl = import.meta.env.VITE_DOCUMENTATION_URL as string | undefined;
 
 const Landing = () => {
   return (
@@ -20,6 +22,17 @@ const Landing = () => {
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="#markets" className="hover:text-foreground transition-colors">Markets</a>
           <a href="#intelligence" className="hover:text-foreground transition-colors">Intelligence</a>
+          {documentationUrl ? (
+            <a
+              href={documentationUrl}
+              className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors"
+              rel="noreferrer"
+              target="_blank"
+            >
+              <BookOpen className="h-4 w-4" />
+              Documentation
+            </a>
+          ) : null}
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
