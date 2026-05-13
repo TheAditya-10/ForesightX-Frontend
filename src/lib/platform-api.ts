@@ -321,6 +321,20 @@ export async function updatePortfolioPosition(userId: string, ticker: string, qu
   });
 }
 
+export async function fetchPortfolioHistory(userId: string) {
+  return request<
+    Array<{
+      id: number;
+      ticker: string;
+      action: string;
+      quantity: number;
+      price: number;
+      realized_pnl: number | null;
+      created_at: string;
+    }>
+  >(`/api/profile/portfolio/${encodeURIComponent(userId)}/history`);
+}
+
 export async function fetchRisk(userId: string) {
   return request<{ user_id: string; risk_level: string }>(`/api/profile/risk/${encodeURIComponent(userId)}`);
 }

@@ -7,7 +7,18 @@ import { Label } from "@/components/ui/label";
 import { type Holding } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { fetchPortfolio, fetchRisk, fetchUserProfile, updateUserProfile, uploadUserProfilePhoto, type SignupProfileInput } from "@/lib/platform-api";
+import {
+  fetchPortfolio,
+  fetchRisk,
+  fetchUserProfile,
+  updateUserProfile,
+  uploadUserProfilePhoto,
+  updatePortfolioPosition,
+  fetchPortfolioHistory,
+  type SignupProfileInput,
+} from "@/lib/platform-api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { getUserId, loadSession } from "@/lib/session";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -35,6 +46,12 @@ const Profile = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [riskLevel, setRiskLevel] = useState("moderate");
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<Array<{ id: number; ticker: string; action: string; quantity: number; price: number; realized_pnl: number | null; created_at: string }>>([]);
+  const [sellOpen, setSellOpen] = useState(false);
+  const [sellTicker, setSellTicker] = useState<string | null>(null);
+  const [sellQty, setSellQty] = useState(1);
+  const [sellMax, setSellMax] = useState(0);
+  const [selling, setSelling] = useState(false);
 
   useEffect(() => {
     const userId = getUserId();
@@ -68,6 +85,12 @@ const Profile = () => {
             price: item.price,
           }))
         );
+        try {
+          const hist = await fetchPortfolioHistory(userId);
+          setHistory(hist || []);
+        } catch {
+          setHistory([]);
+        }
         setRiskLevel(risk.risk_level);
       } catch (err) {
         if (mounted) setProfileError(err instanceof Error ? err.message : "Could not load profile");
@@ -132,6 +155,7 @@ const Profile = () => {
   };
 
   return (
+    <>
     <DashboardLayout activeTab="profile">
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile card */}
@@ -240,6 +264,27 @@ const Profile = () => {
               )}
             </div>
           </div>
+          <div className="rounded-2xl border border-border bg-card shadow-elegant mt-6 p-5">
+            <h3 className="font-display text-lg font-semibold">Transaction history</h3>
+            {history.length === 0 ? (
+              <div className="text-sm text-muted-foreground mt-3">No trades yet</div>
+            ) : (
+              <div className="mt-3 text-sm">
+                {history.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between border-b border-border/60 py-2">
+                    <div className="font-mono-tabular">
+                      <div className="font-medium">{t.ticker} · {t.action}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
+                    </div>
+                    <div className="text-right font-mono-tabular">
+                      <div>${t.price.toFixed(2)} · {t.quantity}</div>
+                      <div className={t.realized_pnl !== null && t.realized_pnl >= 0 ? "text-success text-xs" : "text-loss text-xs"}>{t.realized_pnl !== null ? `${t.realized_pnl >= 0 ? "+" : ""}$${t.realized_pnl.toFixed(2)}` : "—"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Portfolio */}
@@ -287,12 +332,13 @@ const Profile = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr className="border-b border-border">
+                    <tr className="border-b border-border">
                     <th className="px-5 py-3 text-left font-medium">Symbol</th>
                     <th className="px-5 py-3 text-right font-medium">Qty</th>
                     <th className="px-5 py-3 text-right font-medium">Avg</th>
                     <th className="px-5 py-3 text-right font-medium">LTP</th>
                     <th className="px-5 py-3 text-right font-medium">P&L</th>
+                    <th className="px-5 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -336,6 +382,14 @@ const Profile = () => {
                             <div>{up ? "+" : ""}${p.toFixed(2)}</div>
                             <div className="text-xs">{up ? "+" : ""}{pp.toFixed(2)}%</div>
                           </td>
+                          <td className="px-5 py-4 text-right">
+                            <Button variant="ghost" onClick={() => {
+                              setSellTicker(h.symbol);
+                              setSellQty(1);
+                              setSellMax(h.qty);
+                              setSellOpen(true);
+                            }}>Sell</Button>
+                          </td>
                         </tr>
                       );
                     })
@@ -347,6 +401,41 @@ const Profile = () => {
         </section>
       </div>
     </DashboardLayout>
+      <Dialog open={sellOpen} onOpenChange={setSellOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sell · {sellTicker}</DialogTitle>
+            <DialogDescription>Confirm quantity to sell</DialogDescription>
+          </DialogHeader>
+          <div className="p-4">
+            <div className="mb-3 text-sm">Max available: {sellMax}</div>
+            <input type="number" min={1} max={sellMax} value={sellQty} onChange={(e) => setSellQty(Math.max(1, Math.min(sellMax, Number(e.target.value) || 1)))} className="w-full rounded-md border px-3 py-2" />
+            <div className="mt-4 flex gap-2">
+              <Button className="flex-1" onClick={async () => {
+                if (!sellTicker) return;
+                if (sellQty < 1 || sellQty > sellMax) return toast.error("Invalid quantity");
+                setSelling(true);
+                try {
+                  const userId = getUserId();
+                  await updatePortfolioPosition(userId, sellTicker, -sellQty);
+                  const refreshed = await fetchPortfolio(userId);
+                  setHoldings(refreshed.holdings || []);
+                  const hist = await fetchPortfolioHistory(userId);
+                  setHistory(hist || []);
+                  setSellOpen(false);
+                  toast.success("Sell executed");
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Sell failed");
+                } finally {
+                  setSelling(false);
+                }
+              }} disabled={selling}>{selling ? "Selling…" : "Confirm sell"}</Button>
+              <Button variant="outline" onClick={() => setSellOpen(false)} disabled={selling}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
