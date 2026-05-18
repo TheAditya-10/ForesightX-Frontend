@@ -16,16 +16,16 @@ ENV VITE_PATTERN_URL=${VITE_PATTERN_URL}
 ENV VITE_AUTH_URL=${VITE_AUTH_URL}
 ENV VITE_DOCUMENTATION_URL=${VITE_DOCUMENTATION_URL}
 
-COPY ForesightX-frontend/package.json ./package.json
-COPY ForesightX-frontend/package-lock.json ./package-lock.json
+COPY ForesightX-Frontend/package.json ./package.json
+COPY ForesightX-Frontend/package-lock.json ./package-lock.json
 RUN npm ci
 
-COPY ForesightX-frontend .
+COPY ForesightX-Frontend .
 RUN npm run build
 
 FROM nginx:1.27-alpine
 
-COPY ForesightX-frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY ForesightX-Frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
