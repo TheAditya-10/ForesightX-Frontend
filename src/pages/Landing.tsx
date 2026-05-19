@@ -58,7 +58,7 @@ const Landing = () => {
             Markets are open · NSE & NASDAQ live
           </span>
           <h1 className="font-display mt-6 text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl md:text-7xl">
-            Trade with <span className="text-accent">foresight</span>,
+            Trade with <span className="text-accent">foresightX</span>,
             <br className="hidden md:block" /> not guesswork.
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
