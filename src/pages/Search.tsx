@@ -119,7 +119,7 @@ const Search = () => {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="e.g. Tata, NVDA, Banking…"
-            className="h-14 rounded-2xl border-border bg-card pl-12 text-base shadow-elegant"
+            className="h-12 rounded-2xl border-border bg-card pl-12 text-sm shadow-elegant sm:h-14 sm:text-base"
           />
         </div>
 
@@ -130,7 +130,7 @@ const Search = () => {
         <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-elegant">
           {q.trim() && searchLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between border-b border-border/60 px-5 py-4 last:border-0">
+              <div key={i} className="flex flex-col gap-3 border-b border-border/60 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <Skeleton className="h-10 w-10 rounded-lg" />
                   <div>
@@ -138,7 +138,7 @@ const Search = () => {
                     <Skeleton className="mt-2 h-3 w-56" />
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <Skeleton className="h-4 w-20 mx-auto" />
                   <div className="mt-2">
                     <Skeleton className="h-3 w-16 mx-auto" />
@@ -155,10 +155,10 @@ const Search = () => {
                 <Link
                   key={s.symbol}
                   to={`/dashboard/stock/${s.symbol}`}
-                  className="flex items-center justify-between border-b border-border/60 px-5 py-4 last:border-0 hover:bg-secondary/40 transition-colors"
+                  className="flex flex-col gap-3 border-b border-border/60 px-5 py-4 last:border-0 transition-colors hover:bg-secondary/40 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-semibold">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-semibold sm:h-10 sm:w-10">
                       {s.symbol.slice(0, 3)}
                     </div>
                     <div>
@@ -166,9 +166,9 @@ const Search = () => {
                       <div className="text-xs text-muted-foreground">{s.displaySymbol ?? s.symbol} · {s.sector}</div>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right">
                     <div className="font-mono-tabular font-medium">${s.price.toLocaleString()}</div>
-                    <div className={cn("flex items-center justify-end gap-1 text-xs", up ? "text-success" : "text-loss")}>
+                    <div className={cn("flex items-center gap-1 text-xs sm:justify-end", up ? "text-success" : "text-loss")}>
                       {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                       {up ? "+" : ""}{s.changePct.toFixed(2)}%
                     </div>

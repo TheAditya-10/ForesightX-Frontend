@@ -271,12 +271,12 @@ const Profile = () => {
             ) : (
               <div className="mt-3 text-sm">
                 {history.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between border-b border-border/60 py-2">
+                  <div key={t.id} className="flex flex-col gap-2 border-b border-border/60 py-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="font-mono-tabular">
                       <div className="font-medium">{t.ticker} · {t.action}</div>
                       <div className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
                     </div>
-                    <div className="text-right font-mono-tabular">
+                    <div className="text-left font-mono-tabular sm:text-right">
                       <div>${t.price.toFixed(2)} · {t.quantity}</div>
                       <div className={t.realized_pnl !== null && t.realized_pnl >= 0 ? "text-success text-xs" : "text-loss text-xs"}>{t.realized_pnl !== null ? `${t.realized_pnl >= 0 ? "+" : ""}$${t.realized_pnl.toFixed(2)}` : "—"}</div>
                     </div>
@@ -329,7 +329,85 @@ const Profile = () => {
               <Activity className="h-4 w-4 text-accent" />
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="md:hidden p-5">
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-border/60 bg-background/40 p-4">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="mt-2 h-3 w-40" />
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                      <Skeleton className="mt-4 h-9 w-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : holdings.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No holdings yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {holdings.map((h) => {
+                    const value = h.qty * h.price;
+                    const cost = h.qty * h.avgPrice;
+                    const p = value - cost;
+                    const pp = (p / cost) * 100;
+                    const up = p >= 0;
+                    return (
+                      <div key={h.symbol} className="rounded-xl border border-border/60 bg-background/40 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <Link to={`/dashboard/stock/${h.symbol}`} className="block">
+                              <div className="font-mono text-sm font-semibold">{h.symbol}</div>
+                              <div className="text-xs text-muted-foreground">{h.name}</div>
+                            </Link>
+                          </div>
+                          <div className={cn("text-right font-mono-tabular", up ? "text-success" : "text-loss")}>
+                            <div>{up ? "+" : ""}${p.toFixed(2)}</div>
+                            <div className="text-xs">{up ? "+" : ""}{pp.toFixed(2)}%</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                          <div>
+                            <div>Qty</div>
+                            <div className="font-mono-tabular text-foreground">{h.qty}</div>
+                          </div>
+                          <div>
+                            <div>Avg</div>
+                            <div className="font-mono-tabular text-foreground">${h.avgPrice.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div>LTP</div>
+                            <div className="font-mono-tabular text-foreground">${h.price.toFixed(2)}</div>
+                          </div>
+                          <div>
+                            <div>Value</div>
+                            <div className="font-mono-tabular text-foreground">${value.toFixed(2)}</div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="mt-4 w-full"
+                          onClick={() => {
+                            setSellTicker(h.symbol);
+                            setSellQty(1);
+                            setSellMax(h.qty);
+                            setSellOpen(true);
+                          }}
+                        >
+                          Sell
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead className="text-xs uppercase tracking-wider text-muted-foreground">
                     <tr className="border-b border-border">

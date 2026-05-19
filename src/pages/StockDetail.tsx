@@ -367,8 +367,8 @@ const StockDetail = () => {
               <div className="text-xs text-muted-foreground">{ticker} · {stockSector}</div>
             </div>
           </div>
-          <div className="mt-5 flex items-baseline gap-3">
-            <span className="font-mono-tabular font-display text-4xl font-semibold">${currentPrice.toLocaleString()}</span>
+          <div className="mt-5 flex flex-wrap items-baseline gap-3">
+            <span className="font-mono-tabular font-display text-3xl font-semibold sm:text-4xl">${currentPrice.toLocaleString()}</span>
             <span className={cn("font-mono-tabular flex items-center gap-1 text-sm font-medium", up ? "text-success" : "text-loss")}>
               {up ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
               {up ? "+" : ""}
@@ -379,30 +379,30 @@ const StockDetail = () => {
           </div>
         </div>
 
-        <Button size="lg" className="rounded-full px-6 shadow-glow" onClick={() => setSeekOpen(true)}>
+        <Button size="lg" className="w-full rounded-full px-6 shadow-glow md:w-auto" onClick={() => setSeekOpen(true)}>
           <Sparkles className="mr-2 h-4 w-4" /> Seek prediction
         </Button>
       </div>
 
       <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-elegant">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <BarChart3 className="h-4 w-4 text-accent" /> Price chart
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
             {tf === "1D" && (
               <div className="text-xs text-muted-foreground">
                 Today · {new Date().toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
               </div>
             )}
 
-            <div className="flex items-center gap-1 rounded-full border border-border bg-secondary/50 p-1">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-secondary/50 p-1 whitespace-nowrap">
               {TIMEFRAMES.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTf(t.id)}
                   className={cn(
-                    "rounded-full px-4 py-1.5 text-xs font-medium transition-all",
+                    "rounded-full px-4 py-1.5 text-xs font-medium transition-all whitespace-nowrap",
                     tf === t.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -413,10 +413,10 @@ const StockDetail = () => {
           </div>
         </div>
 
-        <div className="h-[360px] w-full">
+        <div className="h-[300px] w-full sm:h-[360px]">
           {loading ? (
-            <div className="h-[360px] w-full p-6 flex items-center justify-center">
-              <Skeleton className="h-[320px] w-full rounded-xl" />
+            <div className="flex h-full w-full items-center justify-center p-6">
+              <Skeleton className="h-full w-full rounded-xl" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -528,7 +528,7 @@ const StockDetail = () => {
       </div>
 
       <Dialog open={seekOpen} onOpenChange={setSeekOpen}>
-        <DialogContent className="max-w-lg overflow-hidden border-border bg-card p-0">
+        <DialogContent className="w-[92vw] max-w-lg overflow-hidden border-border bg-card p-0">
           <div className="relative bg-surface p-6">
             <div className="absolute inset-0 bg-hero-glow opacity-60" />
             <div className="relative">
@@ -544,7 +544,7 @@ const StockDetail = () => {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {isSeekLoading ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
@@ -574,7 +574,7 @@ const StockDetail = () => {
                 ) : null}
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {isSeekLoading ? (
                   <>
                     <div className="rounded-xl border border-border bg-card/80 p-3 backdrop-blur">
@@ -646,7 +646,7 @@ const StockDetail = () => {
                 <div className="mt-2 text-xs text-muted-foreground">Estimated order value: ${(qty * currentPrice).toFixed(2)}</div>
               </div>
 
-              <div className="mt-5 flex gap-2">
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                 <Button className="flex-1 rounded-lg shadow-glow" onClick={handleBuy}>
                   BUY NOW
                 </Button>

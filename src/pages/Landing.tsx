@@ -16,7 +16,7 @@ const Landing = () => {
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-[0.35] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_30%,transparent_75%)]" />
 
       {/* Nav */}
-      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+      <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
         <Logo />
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
@@ -39,14 +39,14 @@ const Landing = () => {
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <Link to="/login">Log in</Link>
           </Button>
-          <Button asChild size="sm" className="rounded-full px-5">
+          <Button asChild size="sm" className="rounded-full px-4 sm:px-5">
             <Link to="/signup">Get started</Link>
           </Button>
         </div>
       </header>
 
       {/* Hero */}
-      <main className="relative z-10 mx-auto max-w-7xl px-6 pb-24 pt-16 md:pt-24">
+      <main className="relative z-10 mx-auto max-w-7xl px-4 pb-20 pt-12 sm:px-6 sm:pb-24 sm:pt-16 md:pt-24">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -57,7 +57,7 @@ const Landing = () => {
             <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-glow" />
             Markets are open · NSE & NASDAQ live
           </span>
-          <h1 className="font-display mt-6 text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl">
+          <h1 className="font-display mt-6 text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl md:text-7xl">
             Trade with <span className="text-accent">foresight</span>,
             <br className="hidden md:block" /> not guesswork.
           </h1>
@@ -66,12 +66,12 @@ const Landing = () => {
             news into one elegant trading workspace.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg" className="rounded-full px-7 shadow-glow">
+            <Button asChild size="lg" className="w-full rounded-full px-7 shadow-glow sm:w-auto">
               <Link to="/signup">
                 Open free account <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="rounded-full px-7">
+            <Button asChild size="lg" variant="outline" className="w-full rounded-full px-7 sm:w-auto">
               <Link to="/login">I already have an account</Link>
             </Button>
           </div>
@@ -85,8 +85,8 @@ const Landing = () => {
           className="mx-auto mt-16 max-w-5xl"
         >
           <div className="rounded-2xl border border-border bg-card/60 p-2 shadow-elegant backdrop-blur-md">
-            <div className="rounded-xl bg-surface p-6 md:p-8">
-              <div className="flex items-center justify-between border-b border-border pb-4">
+            <div className="rounded-xl bg-surface p-5 sm:p-6 md:p-8">
+              <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">Watchlist</div>
                   <div className="font-display mt-1 text-xl font-semibold">Your edge today</div>
@@ -132,7 +132,7 @@ const Landing = () => {
         </div>
 
         {/* Features */}
-        <section id="features" className="mt-28">
+        <section id="features" className="mt-20 sm:mt-28">
           <div className="mb-12 text-center">
             <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
               Built for serious traders.
@@ -165,7 +165,7 @@ const Landing = () => {
         </section>
 
         {/* CTA */}
-        <section className="mt-28 rounded-3xl border border-border bg-surface p-10 text-center shadow-elegant md:p-16">
+        <section className="mt-20 rounded-3xl border border-border bg-surface p-8 text-center shadow-elegant sm:mt-28 sm:p-10 md:p-16">
           <h2 className="font-display text-3xl font-semibold tracking-tight md:text-5xl">
             Your next trade deserves <span className="text-accent">foresight</span>.
           </h2>
@@ -181,7 +181,7 @@ const Landing = () => {
       </main>
 
       <footer className="relative z-10 border-t border-border">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-6 text-xs text-muted-foreground md:flex-row">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-muted-foreground sm:px-6 md:flex-row">
           <Logo />
           <div>© {new Date().getFullYear()} ForeSightX. All markets, one platform.</div>
         </div>

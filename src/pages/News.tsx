@@ -67,12 +67,12 @@ const News = () => {
                 <div className="absolute inset-0 bg-hero-glow" />
                 <div className="absolute inset-0 grid-bg opacity-30" />
               </div>
-              <div className="flex flex-col justify-between p-8">
+              <div className="flex flex-col justify-between p-6 sm:p-8">
                 <div>
                   <span className="inline-flex rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
                     {featured.tag} · Featured
                   </span>
-                  <h2 className="font-display mt-4 text-2xl font-semibold leading-tight tracking-tight md:text-3xl">
+                  <h2 className="font-display mt-4 text-xl font-semibold leading-tight tracking-tight sm:text-2xl md:text-3xl">
                     {featured.title}
                   </h2>
                 </div>
@@ -125,10 +125,10 @@ const News = () => {
                     {n.title}
                   </h3>
                 )}
-                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>{n.source}</span>
                   {n.symbols && (
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1 sm:justify-end">
                       {n.symbols.slice(0, 3).map(s => (
                         <span key={s} className="rounded-md border border-border bg-secondary/50 px-1.5 py-0.5 font-mono text-[10px]">{s}</span>
                       ))}

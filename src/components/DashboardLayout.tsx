@@ -79,8 +79,8 @@ export function DashboardLayout({ children, activeTab }: { children: ReactNode; 
     <div className="min-h-screen bg-background">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-6">
-          <Link to="/dashboard/profile"><Logo /></Link>
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-4 sm:px-6">
+          <Link to="/dashboard/profile" className="shrink-0"><Logo /></Link>
 
           {/* Center: tabs */}
           <nav className="ml-6 hidden items-center gap-1 md:flex">
@@ -103,7 +103,7 @@ export function DashboardLayout({ children, activeTab }: { children: ReactNode; 
           </nav>
 
           {/* Right: search + actions */}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
             <div className="relative hidden md:block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -184,7 +184,7 @@ export function DashboardLayout({ children, activeTab }: { children: ReactNode; 
 
       {/* Live ticker strip */}
       <div className="border-b border-border bg-card/40 py-2">
-        <div className="mx-auto max-w-7xl overflow-hidden px-6">
+        <div className="mx-auto max-w-7xl overflow-hidden px-4 sm:px-6">
           <div className="flex w-max animate-ticker gap-8 whitespace-nowrap text-xs">
             {[...enrichedStocks, ...enrichedStocks].map((s, i) => (
               <span key={i} className="flex items-center gap-2">
@@ -200,7 +200,7 @@ export function DashboardLayout({ children, activeTab }: { children: ReactNode; 
         </div>
       </div>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 animate-fade-in">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6 animate-fade-in sm:px-6 sm:py-8">{children}</main>
     </div>
   );
 }

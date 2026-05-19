@@ -157,12 +157,12 @@ const AuthShell = ({ mode }: { mode: Mode }) => {
 
       {/* Right form panel */}
       <div className="relative flex flex-col">
-        <div className="flex items-center justify-between p-6">
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-6">
           <Link to="/" className="lg:hidden"><Logo /></Link>
           <div className="ml-auto"><ThemeToggle /></div>
         </div>
 
-        <div className="flex flex-1 items-center justify-center px-6 pb-10">
+        <div className="flex flex-1 items-center justify-center px-4 pb-10 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
