@@ -264,27 +264,6 @@ const Profile = () => {
               )}
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-card shadow-elegant mt-6 p-5">
-            <h3 className="font-display text-lg font-semibold">Transaction history</h3>
-            {history.length === 0 ? (
-              <div className="text-sm text-muted-foreground mt-3">No trades yet</div>
-            ) : (
-              <div className="mt-3 text-sm">
-                {history.map((t) => (
-                  <div key={t.id} className="flex flex-col gap-2 border-b border-border/60 py-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="font-mono-tabular">
-                      <div className="font-medium">{t.ticker} · {t.action}</div>
-                      <div className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
-                    </div>
-                    <div className="text-left font-mono-tabular sm:text-right">
-                      <div>${t.price.toFixed(2)} · {t.quantity}</div>
-                      <div className={t.realized_pnl !== null && t.realized_pnl >= 0 ? "text-success text-xs" : "text-loss text-xs"}>{t.realized_pnl !== null ? `${t.realized_pnl >= 0 ? "+" : ""}$${t.realized_pnl.toFixed(2)}` : "—"}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </section>
 
         {/* Portfolio */}
@@ -475,6 +454,28 @@ const Profile = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card shadow-elegant p-5">
+            <h3 className="font-display text-lg font-semibold">Transaction history</h3>
+            {history.length === 0 ? (
+              <div className="mt-3 text-sm text-muted-foreground">No trades yet</div>
+            ) : (
+              <div className="mt-3 text-sm">
+                {history.map((t) => (
+                  <div key={t.id} className="flex flex-col gap-2 border-b border-border/60 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="font-mono-tabular">
+                      <div className="font-medium">{t.ticker} · {t.action}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleString()}</div>
+                    </div>
+                    <div className="text-left font-mono-tabular sm:text-right">
+                      <div>${t.price.toFixed(2)} · {t.quantity}</div>
+                      <div className={t.realized_pnl !== null && t.realized_pnl >= 0 ? "text-success text-xs" : "text-loss text-xs"}>{t.realized_pnl !== null ? `${t.realized_pnl >= 0 ? "+" : ""}$${t.realized_pnl.toFixed(2)}` : "—"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </div>
